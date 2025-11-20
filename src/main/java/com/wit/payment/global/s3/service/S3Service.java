@@ -1,7 +1,14 @@
-/*
- * Copyright (c) WIT Global
+/* 
+ * Copyright (c) WIT Global 
  */
 package com.wit.payment.global.s3.service;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.UUID;
+
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.AmazonS3Exception;
@@ -16,13 +23,9 @@ import com.wit.payment.global.s3.dto.S3Response;
 import com.wit.payment.global.s3.entity.PathName;
 import com.wit.payment.global.s3.exception.S3ErrorCode;
 import com.wit.payment.global.s3.mapper.S3Mapper;
-import java.io.IOException;
-import java.util.List;
-import java.util.UUID;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
 @Service
@@ -35,23 +38,22 @@ public class S3Service {
   private final S3Config s3Config;
   private final S3Mapper s3Mapper;
 
-  /**
-   * Multipart 이미지 파일을 업로드하고, S3Response를 반환합니다.
-   */
+  /** Multipart 이미지 파일을 업로드하고, S3Response를 반환합니다. */
   public S3Response uploadImage(PathName pathName, MultipartFile file) {
 
     String keyName = uploadFile(pathName, file);
     S3Response response = s3Mapper.toResponse(keyName);
 
-    log.info("이미지 업로드 성공 - pathName: {}, keyName: {}, imageUrl: {}",
-        pathName, keyName, response.getImageUrl());
+    log.info(
+        "이미지 업로드 성공 - pathName: {}, keyName: {}, imageUrl: {}",
+        pathName,
+        keyName,
+        response.getImageUrl());
 
     return response;
   }
 
-  /**
-   * Multipart 파일을 지정한 PathName 경로에 업로드하고 S3 객체 keyName을 반환합니다.
-   */
+  /** Multipart 파일을 지정한 PathName 경로에 업로드하고 S3 객체 keyName을 반환합니다. */
   public String uploadFile(PathName pathName, MultipartFile file) {
 
     validateFile(file);
@@ -71,19 +73,25 @@ public class S3Service {
 
       return keyName;
     } catch (AmazonS3Exception e) {
-      log.error("S3 업로드 중 AmazonS3Exception 발생 - bucket: {}, keyName: {}, message: {}",
-          s3Config.getBucket(), keyName, e.getMessage(), e);
+      log.error(
+          "S3 업로드 중 AmazonS3Exception 발생 - bucket: {}, keyName: {}, message: {}",
+          s3Config.getBucket(),
+          keyName,
+          e.getMessage(),
+          e);
       throw new CustomException(S3ErrorCode.S3_CONNECTION_FAILED);
     } catch (IOException e) {
-      log.error("S3 업로드 중 IO 예외 발생 - bucket: {}, keyName: {}, message: {}",
-          s3Config.getBucket(), keyName, e.getMessage(), e);
+      log.error(
+          "S3 업로드 중 IO 예외 발생 - bucket: {}, keyName: {}, message: {}",
+          s3Config.getBucket(),
+          keyName,
+          e.getMessage(),
+          e);
       throw new CustomException(S3ErrorCode.IO_EXCEPTION);
     }
   }
 
-  /**
-   * keyName으로 S3에서 특정 파일을 삭제합니다.
-   */
+  /** keyName으로 S3에서 특정 파일을 삭제합니다. */
   public void deleteFile(String keyName) {
 
     assertFileExists(keyName);
@@ -92,15 +100,17 @@ public class S3Service {
       amazonS3.deleteObject(new DeleteObjectRequest(s3Config.getBucket(), keyName));
       log.info("파일 삭제 성공 - bucket: {}, keyName: {}", s3Config.getBucket(), keyName);
     } catch (AmazonS3Exception e) {
-      log.error("S3 삭제 중 AmazonS3Exception 발생 - bucket: {}, keyName: {}, message: {}",
-          s3Config.getBucket(), keyName, e.getMessage(), e);
+      log.error(
+          "S3 삭제 중 AmazonS3Exception 발생 - bucket: {}, keyName: {}, message: {}",
+          s3Config.getBucket(),
+          keyName,
+          e.getMessage(),
+          e);
       throw new CustomException(S3ErrorCode.S3_CONNECTION_FAILED);
     }
   }
 
-  /**
-   * 지정된 PathName 경로의 모든 파일 목록을 조회합니다.
-   */
+  /** 지정된 PathName 경로의 모든 파일 목록을 조회합니다. */
   public List<S3Response> getAllFiles(PathName pathName) {
 
     String prefix = getPrefix(pathName);
@@ -108,39 +118,40 @@ public class S3Service {
     try {
       ListObjectsV2Result result =
           amazonS3.listObjectsV2(
-              new ListObjectsV2Request()
-                  .withBucketName(s3Config.getBucket())
-                  .withPrefix(prefix));
+              new ListObjectsV2Request().withBucketName(s3Config.getBucket()).withPrefix(prefix));
 
       List<S3Response> responses = s3Mapper.toResponseList(result.getObjectSummaries());
 
-      log.info("파일 목록 조회 성공 - bucket: {}, pathName: {}, prefix: {}, count: {}",
-          s3Config.getBucket(), pathName, prefix, responses.size());
+      log.info(
+          "파일 목록 조회 성공 - bucket: {}, pathName: {}, prefix: {}, count: {}",
+          s3Config.getBucket(),
+          pathName,
+          prefix,
+          responses.size());
 
       return responses;
     } catch (AmazonS3Exception e) {
-      log.error("S3 파일 목록 조회 중 AmazonS3Exception 발생 - bucket: {}, prefix: {}, message: {}",
-          s3Config.getBucket(), prefix, e.getMessage(), e);
+      log.error(
+          "S3 파일 목록 조회 중 AmazonS3Exception 발생 - bucket: {}, prefix: {}, message: {}",
+          s3Config.getBucket(),
+          prefix,
+          e.getMessage(),
+          e);
       throw new CustomException(S3ErrorCode.S3_CONNECTION_FAILED);
     }
   }
 
-  /**
-   * PathName + 파일명으로 파일을 삭제합니다.
-   */
+  /** PathName + 파일명으로 파일을 삭제합니다. */
   public void deleteFile(PathName pathName, String fileName) {
 
     String keyName = getPrefix(pathName) + "/" + fileName;
 
-    log.info("파일 삭제 요청 - pathName: {}, fileName: {}, keyName: {}",
-        pathName, fileName, keyName);
+    log.info("파일 삭제 요청 - pathName: {}, fileName: {}, keyName: {}", pathName, fileName, keyName);
 
     deleteFile(keyName);
   }
 
-  /**
-   * 이미지 URL에서 keyName(path + fileName)을 추출하여 파일을 삭제합니다.
-   */
+  /** 이미지 URL에서 keyName(path + fileName)을 추출하여 파일을 삭제합니다. */
   public void deleteByUrl(String url) {
 
     log.info("URL 기반 파일 삭제 요청 - url: {}", url);
@@ -155,15 +166,20 @@ public class S3Service {
   private void validateFile(MultipartFile file) {
 
     if (file.getSize() > MAX_FILE_SIZE_BYTES) {
-      log.warn("파일 사이즈 초과 - size: {} bytes, limit: {} bytes, originalFilename: {}",
-          file.getSize(), MAX_FILE_SIZE_BYTES, file.getOriginalFilename());
+      log.warn(
+          "파일 사이즈 초과 - size: {} bytes, limit: {} bytes, originalFilename: {}",
+          file.getSize(),
+          MAX_FILE_SIZE_BYTES,
+          file.getOriginalFilename());
       throw new CustomException(S3ErrorCode.FILE_SIZE_INVALID);
     }
 
     String contentType = file.getContentType();
     if (contentType == null || !contentType.startsWith("image/")) {
-      log.warn("허용되지 않는 파일 타입 - contentType: {}, originalFilename: {}",
-          contentType, file.getOriginalFilename());
+      log.warn(
+          "허용되지 않는 파일 타입 - contentType: {}, originalFilename: {}",
+          contentType,
+          file.getOriginalFilename());
       throw new CustomException(S3ErrorCode.FILE_TYPE_INVALID);
     }
   }

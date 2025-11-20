@@ -9,7 +9,7 @@ import lombok.Getter;
 
 @Getter
 @Builder
-@Schema(title = "S3Response DTO", description = "이미지 업로드에 대한 응답 반환")
+@Schema(title = "S3Response", description = "이미지 업로드에 대한 응답 반환")
 public class S3Response {
 
   @Schema(description = "이미지 이름", example = "abc123.png")

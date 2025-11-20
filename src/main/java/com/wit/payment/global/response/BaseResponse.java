@@ -11,7 +11,6 @@ import lombok.NoArgsConstructor;
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
-@Schema(title = "BaseResponse DTO", description = "공통 API 응답 형식")
 public class BaseResponse<T> {
 
   @Schema(description = "요청 성공 여부", example = "true")
