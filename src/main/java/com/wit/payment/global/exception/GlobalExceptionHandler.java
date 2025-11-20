@@ -1,12 +1,10 @@
-/*
- * Copyright (c) WIT Global
+/* 
+ * Copyright (c) WIT Global 
  */
 package com.wit.payment.global.exception;
 
-import com.wit.payment.global.exception.model.BaseErrorCode;
-import com.wit.payment.global.response.BaseResponse;
 import java.util.stream.Collectors;
-import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -14,6 +12,10 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
+import com.wit.payment.global.exception.model.BaseErrorCode;
+import com.wit.payment.global.response.BaseResponse;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * 전역 예외 처리 클래스입니다.
