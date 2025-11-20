@@ -34,8 +34,8 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build with Gradle (prod profile)
-        run: ./gradlew clean bootJar -Pprofile=prod -x test
+      - name: Build with Gradle (dev profile)
+        run: ./gradlew clean bootJar -Pprofile=dev -x test
 
       - name: Docker Hub Login
         uses: docker/login-action@v2
@@ -60,7 +60,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Copy compose & prometheus.yml to Server
+      - name: Copy docker-compose.yml to Server
         uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -78,7 +78,7 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd ~/app
+            cd ~/app/docker
 
             echo "️⚪️ .env 생성 중..."
             printf "${{ secrets.ENV_FILE }}" > .env
