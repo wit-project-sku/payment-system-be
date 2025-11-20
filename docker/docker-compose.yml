@@ -9,7 +9,6 @@ services:
       - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}
       - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
       - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
-    command: [ "java","-Dspring.profiles.active=${SPRING_PROFILES_ACTIVE}","-jar","app.jar" ]
     depends_on:
       mysql:
         condition: service_healthy
