@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 import com.wit.payment.domain.store.dto.request.CreateStoreRequest;
+import com.wit.payment.domain.store.dto.response.FirstStoreResponse;
 import com.wit.payment.domain.store.dto.response.StoreResponse;
 import com.wit.payment.global.response.BaseResponse;
 
@@ -35,4 +36,10 @@ public interface StoreController {
   @Operation(summary = "[관리자용] 가게 삭제 API (hard delete)", description = "가게를 영구 삭제합니다.")
   @DeleteMapping("/{store-id}")
   ResponseEntity<BaseResponse<Void>> deleteStore(@PathVariable("store-id") Long storeId);
+
+  @Operation(
+      summary = "초기 화면 데이터 조회 API (가게 목록 + 첫 가게 상품)",
+      description = "첫 화면 렌더링을 위해 전체 가게 목록과 첫 번째 가게의 상품 목록을 동시에 반환합니다.")
+  @GetMapping("/first")
+  ResponseEntity<BaseResponse<FirstStoreResponse>> getFirstStoreWithProducts();
 }

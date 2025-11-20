@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.wit.payment.domain.store.dto.request.CreateStoreRequest;
+import com.wit.payment.domain.store.dto.response.FirstStoreResponse;
 import com.wit.payment.domain.store.dto.response.StoreResponse;
 import com.wit.payment.domain.store.service.StoreService;
 import com.wit.payment.global.response.BaseResponse;
@@ -44,5 +45,12 @@ public class StoreControllerImpl implements StoreController {
   public ResponseEntity<BaseResponse<Void>> deleteStore(@PathVariable("store-id") Long storeId) {
     storeService.deleteStore(storeId);
     return ResponseEntity.status(HttpStatus.OK).body(BaseResponse.success("가게 삭제가 완료되었습니다.", null));
+  }
+
+  @Override
+  public ResponseEntity<BaseResponse<FirstStoreResponse>> getFirstStoreWithProducts() {
+    FirstStoreResponse response = storeService.getFirstStoreWithProducts();
+    return ResponseEntity.status(HttpStatus.OK)
+        .body(BaseResponse.success("첫 번째 가게 및 상품 목록을 조회했습니다.", response));
   }
 }

@@ -1,7 +1,13 @@
-/*
- * Copyright (c) WIT Global
+/* 
+ * Copyright (c) WIT Global 
  */
 package com.wit.payment.domain.product.mapper;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
+import org.springframework.stereotype.Component;
 
 import com.wit.payment.domain.product.dto.request.CreateProductRequest;
 import com.wit.payment.domain.product.dto.response.ProductDetailResponse;
@@ -11,10 +17,6 @@ import com.wit.payment.domain.product.entity.Product;
 import com.wit.payment.domain.product.entity.ProductImage;
 import com.wit.payment.domain.product.entity.ProductStatus;
 import com.wit.payment.domain.store.entity.Store;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import org.springframework.stereotype.Component;
 
 @Component
 public class ProductMapper {
@@ -55,14 +57,13 @@ public class ProductMapper {
     return images;
   }
 
-  /**
-   * 목록용 요약 응답 (대표 이미지 포함)
-   */
+  /** 목록용 요약 응답 (대표 이미지 포함) */
   public ProductSummaryResponse toProductSummaryResponse(Product product) {
     String thumbnailUrl =
         product.getImages() == null || product.getImages().isEmpty()
             ? null
-            : product.getImages().stream().min(Comparator.comparingInt(ProductImage::getOrderNum))
+            : product.getImages().stream()
+                .min(Comparator.comparingInt(ProductImage::getOrderNum))
                 .map(ProductImage::getImageUrl)
                 .orElse(null);
 
@@ -77,9 +78,7 @@ public class ProductMapper {
         .build();
   }
 
-  /**
-   * 상세 응답 (모든 이미지 포함)
-   */
+  /** 상세 응답 (모든 이미지 포함) */
   public ProductDetailResponse toProductDetailResponse(Product product) {
     List<ProductImage> images =
         product.getImages() == null
