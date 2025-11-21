@@ -9,6 +9,7 @@ import java.util.List;
 
 import org.springframework.stereotype.Component;
 
+import com.wit.payment.domain.category.entity.Category;
 import com.wit.payment.domain.product.dto.request.CreateProductRequest;
 import com.wit.payment.domain.product.dto.response.ProductDetailResponse;
 import com.wit.payment.domain.product.dto.response.ProductImageResponse;
@@ -16,17 +17,16 @@ import com.wit.payment.domain.product.dto.response.ProductSummaryResponse;
 import com.wit.payment.domain.product.entity.Product;
 import com.wit.payment.domain.product.entity.ProductImage;
 import com.wit.payment.domain.product.entity.ProductStatus;
-import com.wit.payment.domain.store.entity.Store;
 
 @Component
 public class ProductMapper {
 
-  public Product toProduct(Store store, CreateProductRequest request) {
+  public Product toProduct(Category category, CreateProductRequest request) {
     ProductStatus status =
         request.getStatus() != null ? request.getStatus() : ProductStatus.ON_SALE;
 
     return Product.builder()
-        .store(store)
+        .category(category)
         .name(request.getName())
         .subTitle(request.getSubTitle())
         .price(request.getPrice())
@@ -69,7 +69,7 @@ public class ProductMapper {
 
     return ProductSummaryResponse.builder()
         .id(product.getId())
-        .storeName(product.getStore().getName())
+        .categoryName(product.getCategory().getName())
         .name(product.getName())
         .subTitle(product.getSubTitle())
         .price(product.getPrice())
@@ -92,7 +92,7 @@ public class ProductMapper {
 
     return ProductDetailResponse.builder()
         .id(product.getId())
-        .storeName(product.getStore().getName())
+        .categoryName(product.getCategory().getName())
         .name(product.getName())
         .subTitle(product.getSubTitle())
         .price(product.getPrice())

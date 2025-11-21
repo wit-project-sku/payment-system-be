@@ -20,13 +20,13 @@ public interface ProductService {
    *
    * <p>이미지 리스트에서 첫 번째 이미지는 썸네일(대표 이미지)로 사용되고, 나머지 이미지는 디테일 이미지로 저장합니다.
    *
-   * @param storeId 가게 식별자
+   * @param categoryId 카테고리 식별자
    * @param request 상품 생성 요청 정보
    * @param images 상품 이미지 리스트 (첫 번째 = 썸네일, 이후 = 디테일 이미지)
    * @return 생성된 상품 상세 정보 응답
    */
   ProductDetailResponse createProduct(
-      Long storeId, CreateProductRequest request, List<MultipartFile> images);
+      Long categoryId, CreateProductRequest request, List<MultipartFile> images);
 
   /**
    * 상품 정보를 수정합니다.
@@ -60,14 +60,14 @@ public interface ProductService {
   void hardDeleteProduct(Long productId);
 
   /**
-   * 특정 가게의 상품 목록을 조회합니다.
+   * 특정 카테고리의 상품 목록을 조회합니다.
    *
    * <p>대표 이미지(썸네일) 한 장만 포함하며, description은 포함하지 않습니다.
    *
-   * @param storeId 가게 식별자
+   * @param categoryId 카테고리 식별자
    * @return 상품 요약 응답 리스트
    */
-  List<ProductSummaryResponse> getProductsByStore(Long storeId);
+  List<ProductSummaryResponse> getProductsByCategory(Long categoryId);
 
   /**
    * 상품 상세 정보를 조회합니다.

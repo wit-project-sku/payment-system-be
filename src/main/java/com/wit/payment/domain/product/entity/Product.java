@@ -20,7 +20,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
-import com.wit.payment.domain.store.entity.Store;
+import com.wit.payment.domain.category.entity.Category;
 import com.wit.payment.global.common.BaseTimeEntity;
 
 import lombok.AccessLevel;
@@ -43,8 +43,8 @@ public class Product extends BaseTimeEntity {
   private Long id;
 
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "store_id", nullable = false)
-  private Store store;
+  @JoinColumn(name = "category_id", nullable = false)
+  private Category category;
 
   @Column(name = "name", nullable = false)
   private String name;

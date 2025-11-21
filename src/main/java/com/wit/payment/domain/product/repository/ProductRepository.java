@@ -13,5 +13,7 @@ import com.wit.payment.domain.product.entity.ProductStatus;
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
   // storeId 기준으로 HIDDEN 아닌 상품 목록 조회 (키오스크 노출용)
-  List<Product> findByStoreIdAndStatusNotOrderByCreatedAtAsc(Long storeId, ProductStatus status);
+  List<Product> findByCategoryIdAndStatusNotOrderByCreatedAtAsc(Long storeId, ProductStatus status);
+
+  Long deleteByCategoryId(Long categoryId);
 }

@@ -10,6 +10,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.wit.payment.domain.category.entity.Category;
+import com.wit.payment.domain.category.exception.CategoryErrorCode;
+import com.wit.payment.domain.category.repository.CategoryRepository;
 import com.wit.payment.domain.product.dto.request.CreateProductRequest;
 import com.wit.payment.domain.product.dto.request.UpdateProductRequest;
 import com.wit.payment.domain.product.dto.response.ProductDetailResponse;
@@ -21,9 +24,6 @@ import com.wit.payment.domain.product.exception.ProductErrorCode;
 import com.wit.payment.domain.product.mapper.ProductMapper;
 import com.wit.payment.domain.product.repository.ProductImageRepository;
 import com.wit.payment.domain.product.repository.ProductRepository;
-import com.wit.payment.domain.store.entity.Store;
-import com.wit.payment.domain.store.exception.StoreErrorCode;
-import com.wit.payment.domain.store.repository.StoreRepository;
 import com.wit.payment.global.exception.CustomException;
 import com.wit.payment.global.s3.entity.PathName;
 import com.wit.payment.global.s3.service.S3Service;
@@ -37,7 +37,9 @@ import lombok.extern.slf4j.Slf4j;
 @Transactional(readOnly = true)
 public class ProductServiceImpl implements ProductService {
 
-  private final StoreRepository storeRepository;
+  private static final int MAX_IMAGE_COUNT = 4;
+
+  private final CategoryRepository storeRepository;
   private final ProductRepository productRepository;
   private final ProductImageRepository productImageRepository;
   private final ProductMapper productMapper;
@@ -46,12 +48,14 @@ public class ProductServiceImpl implements ProductService {
   @Override
   @Transactional
   public ProductDetailResponse createProduct(
-      Long storeId, CreateProductRequest request, List<MultipartFile> images) {
+      Long categoryId, CreateProductRequest request, List<MultipartFile> images) {
 
-    Store store =
+    validateImages(images);
+
+    Category store =
         storeRepository
-            .findById(storeId)
-            .orElseThrow(() -> new CustomException(StoreErrorCode.STORE_NOT_FOUND));
+            .findById(categoryId)
+            .orElseThrow(() -> new CustomException(CategoryErrorCode.CATEGORY_NOT_FOUND));
 
     Product product = productMapper.toProduct(store, request);
 
@@ -66,7 +70,7 @@ public class ProductServiceImpl implements ProductService {
       saved.getImages().addAll(productImages);
     }
 
-    log.info("상품 생성 성공 - productId: {}, storeId: {}", saved.getId(), storeId);
+    log.info("상품 생성 성공 - productId: {}, storeId: {}", saved.getId(), categoryId);
     return productMapper.toProductDetailResponse(saved);
   }
 
@@ -136,19 +140,19 @@ public class ProductServiceImpl implements ProductService {
   }
 
   @Override
-  public List<ProductSummaryResponse> getProductsByStore(Long storeId) {
+  public List<ProductSummaryResponse> getProductsByCategory(Long categoryId) {
     storeRepository
-        .findById(storeId)
-        .orElseThrow(() -> new CustomException(StoreErrorCode.STORE_NOT_FOUND));
+        .findById(categoryId)
+        .orElseThrow(() -> new CustomException(CategoryErrorCode.CATEGORY_NOT_FOUND));
 
     List<Product> products =
-        productRepository.findByStoreIdAndStatusNotOrderByCreatedAtAsc(
-            storeId, ProductStatus.HIDDEN);
+        productRepository.findByCategoryIdAndStatusNotOrderByCreatedAtAsc(
+            categoryId, ProductStatus.HIDDEN);
 
     List<ProductSummaryResponse> responses =
         products.stream().map(productMapper::toProductSummaryResponse).toList();
 
-    log.info("가게별 상품 목록 조회 성공 - storeId: {}, count: {}", storeId, responses.size());
+    log.info("가게별 상품 목록 조회 성공 - storeId: {}, count: {}", categoryId, responses.size());
     return responses;
   }
 
@@ -195,6 +199,24 @@ public class ProductServiceImpl implements ProductService {
         continue;
       }
       s3Service.deleteByUrl(image.getImageUrl());
+    }
+  }
+
+  /** 상품 생성 시 이미지가 최소 1장 이상 최대 4장 이하로 존재하는지 검증합니다. */
+  private void validateImages(List<MultipartFile> images) {
+
+    if (images == null || images.isEmpty()) {
+      throw new CustomException(ProductErrorCode.IMAGE_REQUIRED);
+    }
+
+    long nonEmptyCount = images.stream().filter(file -> file != null && !file.isEmpty()).count();
+
+    if (nonEmptyCount == 0) {
+      throw new CustomException(ProductErrorCode.IMAGE_REQUIRED);
+    }
+
+    if (nonEmptyCount > MAX_IMAGE_COUNT) {
+      throw new CustomException(ProductErrorCode.TOO_MANY_IMAGES);
     }
   }
 }

@@ -5,6 +5,8 @@ package com.wit.payment.domain.product.controller;
 
 import java.util.List;
 
+import jakarta.validation.Valid;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,11 +31,11 @@ public class ProductControllerImpl implements ProductController {
 
   @Override
   public ResponseEntity<BaseResponse<ProductDetailResponse>> createProduct(
-      @PathVariable("store-id") Long storeId,
-      @RequestPart("data") CreateProductRequest request,
+      @PathVariable("category-id") Long categoryId,
+      @Valid @RequestPart("data") CreateProductRequest request,
       @RequestPart(value = "images", required = false) List<MultipartFile> images) {
 
-    ProductDetailResponse response = productService.createProduct(storeId, request, images);
+    ProductDetailResponse response = productService.createProduct(categoryId, request, images);
 
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(BaseResponse.success("상품 생성이 완료되었습니다.", response));
@@ -42,7 +44,7 @@ public class ProductControllerImpl implements ProductController {
   @Override
   public ResponseEntity<BaseResponse<ProductDetailResponse>> updateProduct(
       @PathVariable("product-id") Long productId,
-      @RequestPart("data") UpdateProductRequest request,
+      @Valid @RequestPart("data") UpdateProductRequest request,
       @RequestPart(value = "images", required = false) List<MultipartFile> images) {
 
     ProductDetailResponse response = productService.updateProduct(productId, request, images);
@@ -68,12 +70,12 @@ public class ProductControllerImpl implements ProductController {
   }
 
   @Override
-  public ResponseEntity<BaseResponse<List<ProductSummaryResponse>>> getProductsByStore(
-      @PathVariable("store-id") Long storeId) {
+  public ResponseEntity<BaseResponse<List<ProductSummaryResponse>>> getProductsByCategory(
+      @PathVariable("category-id") Long categoryId) {
 
-    List<ProductSummaryResponse> responses = productService.getProductsByStore(storeId);
+    List<ProductSummaryResponse> responses = productService.getProductsByCategory(categoryId);
     return ResponseEntity.status(HttpStatus.OK)
-        .body(BaseResponse.success("가게별 상품 목록을 조회했습니다.", responses));
+        .body(BaseResponse.success("카테고리별 상품 목록을 조회했습니다.", responses));
   }
 
   @Override
