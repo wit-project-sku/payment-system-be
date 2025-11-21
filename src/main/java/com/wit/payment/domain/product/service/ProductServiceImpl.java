@@ -37,6 +37,8 @@ import lombok.extern.slf4j.Slf4j;
 @Transactional(readOnly = true)
 public class ProductServiceImpl implements ProductService {
 
+  private static final int MAX_IMAGE_COUNT = 4;
+
   private final StoreRepository storeRepository;
   private final ProductRepository productRepository;
   private final ProductImageRepository productImageRepository;
@@ -47,6 +49,8 @@ public class ProductServiceImpl implements ProductService {
   @Transactional
   public ProductDetailResponse createProduct(
       Long storeId, CreateProductRequest request, List<MultipartFile> images) {
+
+    validateImages(images);
 
     Store store =
         storeRepository
@@ -195,6 +199,24 @@ public class ProductServiceImpl implements ProductService {
         continue;
       }
       s3Service.deleteByUrl(image.getImageUrl());
+    }
+  }
+
+  /** 상품 생성 시 이미지가 최소 1장 이상 최대 4장 이하로 존재하는지 검증합니다. */
+  private void validateImages(List<MultipartFile> images) {
+
+    if (images == null || images.isEmpty()) {
+      throw new CustomException(ProductErrorCode.IMAGE_REQUIRED);
+    }
+
+    long nonEmptyCount = images.stream().filter(file -> file != null && !file.isEmpty()).count();
+
+    if (nonEmptyCount == 0) {
+      throw new CustomException(ProductErrorCode.IMAGE_REQUIRED);
+    }
+
+    if (nonEmptyCount > MAX_IMAGE_COUNT) {
+      throw new CustomException(ProductErrorCode.TOO_MANY_IMAGES);
     }
   }
 }
