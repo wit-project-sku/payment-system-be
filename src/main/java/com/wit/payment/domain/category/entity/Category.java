@@ -1,7 +1,7 @@
 /* 
  * Copyright (c) WIT Global 
  */
-package com.wit.payment.domain.store.entity;
+package com.wit.payment.domain.category.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -19,12 +19,12 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "store")
+@Table(name = "category")
 @Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
-public class Store extends BaseTimeEntity {
+public class Category extends BaseTimeEntity {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)

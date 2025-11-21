@@ -23,8 +23,8 @@ public class ProductDetailResponse {
   @Schema(description = "상품 식별자", example = "1")
   private Long id;
 
-  @Schema(description = "가게 이름", example = "인사동 한옥 카페")
-  private String storeName;
+  @Schema(description = "카테고리 이름", example = "WITH Goods")
+  private String categoryName;
 
   @Schema(description = "상품 이름")
   private String name;

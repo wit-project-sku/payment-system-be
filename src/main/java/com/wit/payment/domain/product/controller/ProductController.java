@@ -32,16 +32,19 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @Tag(name = "Product", description = "키오스크 상품 관련 API")
 public interface ProductController {
 
-  @Operation(summary = "상품 생성 API", description = "특정 가게에 상품을 생성합니다.")
-  @PostMapping(path = "/stores/{store-id}/products", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  @Operation(summary = "상품 생성 API", description = "특정 카테고리에 상품을 생성합니다. (이미지 1~4장 제한)")
+  @PostMapping(
+      path = "/categories/{category-id}/products",
+      consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   ResponseEntity<BaseResponse<ProductDetailResponse>> createProduct(
-      @Parameter(description = "가게 식별자", example = "1") @PathVariable("store-id") Long storeId,
+      @Parameter(description = "카테고리 식별자", example = "1") @PathVariable("category-id")
+          Long categoryId,
       @Parameter(description = "상품 등록 내용") @RequestPart("data") @Valid CreateProductRequest request,
       @Parameter(description = "상품 이미지 리스트 (첫 번째가 대표 이미지)")
           @RequestPart(value = "images", required = false)
           List<MultipartFile> images);
 
-  @Operation(summary = "상품 수정 API", description = "특정 상품 정보를 수정합니다.")
+  @Operation(summary = "상품 수정 API", description = "특정 상품 정보를 수정합니다. (이미지 1~4장 제한)")
   @PutMapping(path = "/products/{product-id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   ResponseEntity<BaseResponse<ProductDetailResponse>> updateProduct(
       @Parameter(description = "상품 식별자", example = "10") @PathVariable("product-id") Long productId,
@@ -63,12 +66,13 @@ public interface ProductController {
           Long productId);
 
   @Operation(
-      summary = "가게별 상품 목록 조회 API",
+      summary = "카테고리별 상품 목록 조회 API",
       description =
-          "storeId에 따른 상품 목록을 조회합니다. " + "대표 이미지 1장과 subTitle만 포함하며 description은 포함하지 않습니다.")
-  @GetMapping("/stores/{store-id}/products")
-  ResponseEntity<BaseResponse<List<ProductSummaryResponse>>> getProductsByStore(
-      @Parameter(description = "가게 식별자", example = "1") @PathVariable("store-id") Long storeId);
+          "categoryId에 따른 상품 목록을 조회합니다. " + "대표 이미지 1장과 subTitle만 포함하며 description은 포함하지 않습니다.")
+  @GetMapping("/categories/{category-id}/products")
+  ResponseEntity<BaseResponse<List<ProductSummaryResponse>>> getProductsByCategory(
+      @Parameter(description = "카테고리 식별자", example = "1") @PathVariable("category-id")
+          Long categoryId);
 
   @Operation(
       summary = "상품 상세 조회 API",
