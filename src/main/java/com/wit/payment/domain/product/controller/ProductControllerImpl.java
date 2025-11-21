@@ -5,6 +5,8 @@ package com.wit.payment.domain.product.controller;
 
 import java.util.List;
 
+import jakarta.validation.Valid;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,7 +32,7 @@ public class ProductControllerImpl implements ProductController {
   @Override
   public ResponseEntity<BaseResponse<ProductDetailResponse>> createProduct(
       @PathVariable("store-id") Long storeId,
-      @RequestPart("data") CreateProductRequest request,
+      @Valid @RequestPart("data") CreateProductRequest request,
       @RequestPart(value = "images", required = false) List<MultipartFile> images) {
 
     ProductDetailResponse response = productService.createProduct(storeId, request, images);
@@ -42,7 +44,7 @@ public class ProductControllerImpl implements ProductController {
   @Override
   public ResponseEntity<BaseResponse<ProductDetailResponse>> updateProduct(
       @PathVariable("product-id") Long productId,
-      @RequestPart("data") UpdateProductRequest request,
+      @Valid @RequestPart("data") UpdateProductRequest request,
       @RequestPart(value = "images", required = false) List<MultipartFile> images) {
 
     ProductDetailResponse response = productService.updateProduct(productId, request, images);

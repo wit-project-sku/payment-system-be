@@ -5,6 +5,8 @@ package com.wit.payment.domain.product.controller;
 
 import java.util.List;
 
+import jakarta.validation.Valid;
+
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -34,7 +36,7 @@ public interface ProductController {
   @PostMapping(path = "/stores/{store-id}/products", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   ResponseEntity<BaseResponse<ProductDetailResponse>> createProduct(
       @Parameter(description = "가게 식별자", example = "1") @PathVariable("store-id") Long storeId,
-      @Parameter(description = "상품 등록 내용") @RequestPart("data") CreateProductRequest request,
+      @Parameter(description = "상품 등록 내용") @RequestPart("data") @Valid CreateProductRequest request,
       @Parameter(description = "상품 이미지 리스트 (첫 번째가 대표 이미지)")
           @RequestPart(value = "images", required = false)
           List<MultipartFile> images);
@@ -43,7 +45,7 @@ public interface ProductController {
   @PutMapping(path = "/products/{product-id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   ResponseEntity<BaseResponse<ProductDetailResponse>> updateProduct(
       @Parameter(description = "상품 식별자", example = "10") @PathVariable("product-id") Long productId,
-      @Parameter(description = "상품 수정 내용") @RequestPart("data") UpdateProductRequest request,
+      @Parameter(description = "상품 수정 내용") @RequestPart("data") @Valid UpdateProductRequest request,
       @Parameter(description = "상품 이미지 리스트 (첫 번째가 대표 이미지)")
           @RequestPart(value = "images", required = false)
           List<MultipartFile> images);
