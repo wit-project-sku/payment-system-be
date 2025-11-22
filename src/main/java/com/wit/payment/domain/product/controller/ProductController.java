@@ -34,7 +34,7 @@ public interface ProductController {
 
   @Operation(summary = "상품 생성 API", description = "특정 카테고리에 상품을 생성합니다. (이미지 1~4장 제한)")
   @PostMapping(
-      path = "/categories/{category-id}/products",
+      path = "/admin/categories/{category-id}/products",
       consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   ResponseEntity<BaseResponse<ProductDetailResponse>> createProduct(
       @Parameter(description = "카테고리 식별자", example = "1") @PathVariable("category-id")
@@ -45,7 +45,7 @@ public interface ProductController {
           List<MultipartFile> images);
 
   @Operation(summary = "상품 수정 API", description = "특정 상품 정보를 수정합니다. (이미지 1~4장 제한)")
-  @PutMapping(path = "/products/{product-id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  @PutMapping(path = "/admin/products/{product-id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   ResponseEntity<BaseResponse<ProductDetailResponse>> updateProduct(
       @Parameter(description = "상품 식별자", example = "10") @PathVariable("product-id") Long productId,
       @Parameter(description = "상품 수정 내용") @RequestPart("data") @Valid UpdateProductRequest request,
@@ -54,13 +54,13 @@ public interface ProductController {
           List<MultipartFile> images);
 
   @Operation(summary = "상품 삭제 API (soft delete)", description = "상품 상태를 HIDDEN으로 변경합니다.")
-  @DeleteMapping("/products/{product-id}")
+  @DeleteMapping("/admin/products/{product-id}")
   ResponseEntity<BaseResponse<Void>> softDeleteProduct(
       @Parameter(description = "상품 식별자", example = "10") @PathVariable("product-id")
           Long productId);
 
   @Operation(summary = "[관리자용] 상품 삭제 API (hard delete)", description = "상품을 영구 삭제합니다.")
-  @DeleteMapping("/products/{product-id}/hard")
+  @DeleteMapping("/admin/products/{product-id}/hard")
   ResponseEntity<BaseResponse<Void>> hardDeleteProduct(
       @Parameter(description = "상품 식별자", example = "10") @PathVariable("product-id")
           Long productId);

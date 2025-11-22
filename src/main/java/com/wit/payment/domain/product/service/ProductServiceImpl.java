@@ -84,6 +84,8 @@ public class ProductServiceImpl implements ProductService {
             .findById(productId)
             .orElseThrow(() -> new CustomException(ProductErrorCode.PRODUCT_NOT_FOUND));
 
+    validateImages(images);
+
     product.update(
         request.getName(),
         request.getSubTitle(),

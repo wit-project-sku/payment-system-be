@@ -25,7 +25,7 @@ import io.swagger.v3.oas.annotations.servers.Server;
                 - 파일 업로드 크기 제한: 5MB (1개 파일 크기)
 
                 ## 문의
-                - 기술 문의: unijun0109@gmail.com, 1030n@naver.com
+                - 기술 문의: 1030n@naver.com
                 - 일반 문의: unijun0109@gmail.com, 1030n@naver.com
                 """)),
     security = @SecurityRequirement(name = "Authorization"),
