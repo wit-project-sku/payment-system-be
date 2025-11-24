@@ -3,6 +3,8 @@
  */
 package com.wit.payment.domain.product.dto.request;
 
+import java.util.List;
+
 import jakarta.validation.constraints.Size;
 
 import com.wit.payment.domain.product.entity.ProductStatus;
@@ -23,8 +25,8 @@ public class UpdateProductRequest {
   @Schema(description = "상품 이름", example = "아이스 아메리카노")
   private String name;
 
-  @Schema(description = "상품 부제목(최대 30자)", example = "시원한 여름 시그니처 메뉴")
-  @Size(max = 30, message = "상품 한줄 설명은 최대 30자까지 입력 가능합니다.")
+  @Schema(description = "상품 부제목(최대 20자)", example = "시원한 여름 시그니처 메뉴")
+  @Size(max = 20, message = "상품 한줄 설명은 최대 20자까지 입력 가능합니다.")
   private String subTitle;
 
   @Schema(description = "상품 가격", example = "4500")
@@ -36,4 +38,7 @@ public class UpdateProductRequest {
 
   @Schema(description = "상품 상태", example = "ON_SALE")
   private ProductStatus status;
+
+  @Schema(description = "상품을 노출할 키오스크 ID 목록", example = "[1, 2, 3]")
+  private List<Long> kioskIds;
 }

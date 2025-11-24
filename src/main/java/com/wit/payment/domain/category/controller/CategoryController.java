@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import com.wit.payment.domain.category.dto.request.CreateCategoryRequest;
 import com.wit.payment.domain.category.dto.response.CategoryResponse;
@@ -19,6 +20,7 @@ import com.wit.payment.domain.category.dto.response.FirstCategoryResponse;
 import com.wit.payment.global.response.BaseResponse;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RequestMapping("/api")
@@ -42,5 +44,8 @@ public interface CategoryController {
       summary = "초기 화면 데이터 조회 API (카테고리 목록 + 첫 카테고리 상품)",
       description = "첫 화면 렌더링을 위해 전체 카테고리 목록과 첫 번째 카테고리의 상품 목록을 동시에 반환합니다.")
   @GetMapping("/categories/first")
-  ResponseEntity<BaseResponse<FirstCategoryResponse>> getFirstCategoryWithProducts();
+  ResponseEntity<BaseResponse<FirstCategoryResponse>> getFirstCategoryWithProducts(
+      @Parameter(description = "필터링할 키오스크 식별자(선택)", example = "1")
+          @RequestParam(value = "kiosk-id", required = false)
+          Long kioskId);
 }

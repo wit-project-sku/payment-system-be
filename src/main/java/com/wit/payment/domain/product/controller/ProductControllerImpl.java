@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
@@ -71,11 +72,15 @@ public class ProductControllerImpl implements ProductController {
 
   @Override
   public ResponseEntity<BaseResponse<List<ProductSummaryResponse>>> getProductsByCategory(
-      @PathVariable("category-id") Long categoryId) {
+      @PathVariable("category-id") Long categoryId,
+      @RequestParam(value = "kiosk-id", required = false) Long kioskId) {
 
-    List<ProductSummaryResponse> responses = productService.getProductsByCategory(categoryId);
-    return ResponseEntity.status(HttpStatus.OK)
-        .body(BaseResponse.success("카테고리별 상품 목록을 조회했습니다.", responses));
+    List<ProductSummaryResponse> responses =
+        productService.getProductsByCategory(categoryId, kioskId);
+
+    String message = kioskId == null ? "카테고리별 상품 목록을 조회했습니다." : "키오스크 기준 카테고리별 상품 목록을 조회했습니다.";
+
+    return ResponseEntity.status(HttpStatus.OK).body(BaseResponse.success(message, responses));
   }
 
   @Override

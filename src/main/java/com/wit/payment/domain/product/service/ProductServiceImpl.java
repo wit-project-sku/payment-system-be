@@ -13,6 +13,9 @@ import org.springframework.web.multipart.MultipartFile;
 import com.wit.payment.domain.category.entity.Category;
 import com.wit.payment.domain.category.exception.CategoryErrorCode;
 import com.wit.payment.domain.category.repository.CategoryRepository;
+import com.wit.payment.domain.kiosk.entity.Kiosk;
+import com.wit.payment.domain.kiosk.exception.KioskErrorCode;
+import com.wit.payment.domain.kiosk.repository.KioskRepository;
 import com.wit.payment.domain.product.dto.request.CreateProductRequest;
 import com.wit.payment.domain.product.dto.request.UpdateProductRequest;
 import com.wit.payment.domain.product.dto.response.ProductDetailResponse;
@@ -44,6 +47,7 @@ public class ProductServiceImpl implements ProductService {
   private final ProductImageRepository productImageRepository;
   private final ProductMapper productMapper;
   private final S3Service s3Service;
+  private final KioskRepository kioskRepository;
 
   @Override
   @Transactional
@@ -62,12 +66,20 @@ public class ProductServiceImpl implements ProductService {
     Product saved = productRepository.save(product);
 
     List<String> imageUrls = toImageUrls(images);
-
     List<ProductImage> productImages = productMapper.toProductImages(saved, imageUrls);
 
     if (!productImages.isEmpty()) {
       productImageRepository.saveAll(productImages);
       saved.getImages().addAll(productImages);
+    }
+
+    if (request.getKioskIds() != null && !request.getKioskIds().isEmpty()) {
+      List<Kiosk> kiosks = kioskRepository.findByIdIn(request.getKioskIds());
+
+      if (kiosks.size() != request.getKioskIds().size()) {
+        throw new CustomException(KioskErrorCode.KIOSK_NOT_FOUND);
+      }
+      saved.updateKiosks(kiosks);
     }
 
     log.info("상품 생성 성공 - productId: {}, storeId: {}", saved.getId(), categoryId);
@@ -107,6 +119,22 @@ public class ProductServiceImpl implements ProductService {
       product.getImages().addAll(newImages);
     }
 
+    if (request.getKioskIds() != null) {
+      List<Long> kioskIds = request.getKioskIds();
+
+      if (!kioskIds.isEmpty()) {
+        List<Kiosk> kiosks = kioskRepository.findByIdIn(kioskIds);
+
+        if (kiosks.size() != kioskIds.size()) {
+          throw new CustomException(KioskErrorCode.KIOSK_NOT_FOUND);
+        }
+
+        product.updateKiosks(kiosks);
+      } else {
+        product.updateKiosks(List.of());
+      }
+    }
+
     log.info("상품 수정 성공 - productId: {}", productId);
     return productMapper.toProductDetailResponse(product);
   }
@@ -142,20 +170,36 @@ public class ProductServiceImpl implements ProductService {
   }
 
   @Override
-  public List<ProductSummaryResponse> getProductsByCategory(Long categoryId) {
+  public List<ProductSummaryResponse> getProductsByCategory(Long categoryId, Long kioskId) {
     storeRepository
         .findById(categoryId)
         .orElseThrow(() -> new CustomException(CategoryErrorCode.CATEGORY_NOT_FOUND));
 
-    List<Product> products =
-        productRepository.findByCategoryIdAndStatusNotOrderByCreatedAtAsc(
-            categoryId, ProductStatus.HIDDEN);
+    List<Product> products;
 
-    List<ProductSummaryResponse> responses =
-        products.stream().map(productMapper::toProductSummaryResponse).toList();
+    if (kioskId == null) {
+      products =
+          productRepository.findByCategoryIdAndStatusNotOrderByCreatedAtAsc(
+              categoryId, ProductStatus.HIDDEN);
 
-    log.info("가게별 상품 목록 조회 성공 - storeId: {}, count: {}", categoryId, responses.size());
-    return responses;
+      log.info("카테고리별 상품 목록 조회 성공 - categoryId: {}, count: {}", categoryId, products.size());
+    } else {
+      kioskRepository
+          .findById(kioskId)
+          .orElseThrow(() -> new CustomException(KioskErrorCode.KIOSK_NOT_FOUND));
+
+      products =
+          productRepository.findByCategoryAndKioskAndStatusNotOrderByCreatedAtAsc(
+              categoryId, kioskId, ProductStatus.HIDDEN);
+
+      log.info(
+          "카테고리별 상품 목록 조회 성공 (키오스크 필터) - categoryId: {}, kioskId: {}, count: {}",
+          categoryId,
+          kioskId,
+          products.size());
+    }
+
+    return products.stream().map(productMapper::toProductSummaryResponse).toList();
   }
 
   @Override

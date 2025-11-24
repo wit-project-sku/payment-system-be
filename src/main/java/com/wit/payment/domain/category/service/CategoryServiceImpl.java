@@ -72,7 +72,7 @@ public class CategoryServiceImpl implements CategoryService {
   }
 
   @Override
-  public FirstCategoryResponse getFirstCategoryWithProducts() {
+  public FirstCategoryResponse getFirstCategoryWithProducts(Long kioskId) {
 
     List<Category> categories = categoryRepository.findAll();
 
@@ -80,14 +80,16 @@ public class CategoryServiceImpl implements CategoryService {
       throw new CustomException(CategoryErrorCode.CATEGORY_NOT_FOUND);
     }
 
-    // 첫번째로 조회할 스토어 선택
     Category firstCategory = categories.get(0);
 
     List<ProductSummaryResponse> products =
-        productService.getProductsByCategory(firstCategory.getId());
+        productService.getProductsByCategory(firstCategory.getId(), kioskId);
 
     log.info(
-        "첫 번째 카테고리의 상품 조회 완료 - categoryId: {}, count: {}", firstCategory.getId(), products.size());
+        "첫 번째 카테고리의 상품 조회 완료 - categoryId: {}, kioskId: {}, count: {}",
+        firstCategory.getId(),
+        kioskId,
+        products.size());
 
     return new FirstCategoryResponse(
         categoryMapper.toCategoryResponseList(categories),

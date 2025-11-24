@@ -21,6 +21,8 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
 import com.wit.payment.domain.category.entity.Category;
+import com.wit.payment.domain.kiosk.entity.Kiosk;
+import com.wit.payment.domain.kiosk.entity.KioskProduct;
 import com.wit.payment.global.common.BaseTimeEntity;
 
 import lombok.AccessLevel;
@@ -67,6 +69,10 @@ public class Product extends BaseTimeEntity {
   @Builder.Default
   private List<ProductImage> images = new ArrayList<>();
 
+  @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+  @Builder.Default
+  private List<KioskProduct> kioskProducts = new ArrayList<>();
+
   public void update(
       String name, String subTitle, Integer price, String description, ProductStatus status) {
     this.name = name;
@@ -78,5 +84,22 @@ public class Product extends BaseTimeEntity {
 
   public void hide() {
     this.status = ProductStatus.HIDDEN;
+  }
+
+  public void updateKiosks(List<Kiosk> kiosks) {
+    for (KioskProduct kp : this.kioskProducts) {
+      kp.getKiosk().getKioskProducts().remove(kp);
+    }
+    this.kioskProducts.clear();
+
+    if (kiosks == null || kiosks.isEmpty()) {
+      return;
+    }
+
+    for (Kiosk kiosk : kiosks) {
+      KioskProduct kp = KioskProduct.of(kiosk, this);
+      this.kioskProducts.add(kp);
+      kiosk.getKioskProducts().add(kp);
+    }
   }
 }

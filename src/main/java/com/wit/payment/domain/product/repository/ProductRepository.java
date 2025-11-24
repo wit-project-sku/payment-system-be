@@ -6,6 +6,8 @@ package com.wit.payment.domain.product.repository;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import com.wit.payment.domain.product.entity.Product;
 import com.wit.payment.domain.product.entity.ProductStatus;
@@ -16,4 +18,18 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
   List<Product> findByCategoryIdAndStatusNotOrderByCreatedAtAsc(Long storeId, ProductStatus status);
 
   Long deleteByCategoryId(Long categoryId);
+
+  @Query(
+      "select distinct p "
+          + "from Product p "
+          + "join p.kioskProducts kp "
+          + "join kp.kiosk k "
+          + "where p.category.id = :categoryId "
+          + "and p.status <> :status "
+          + "and k.id = :kioskId "
+          + "order by p.createdAt asc")
+  List<Product> findByCategoryAndKioskAndStatusNotOrderByCreatedAtAsc(
+      @Param("categoryId") Long categoryId,
+      @Param("kioskId") Long kioskId,
+      @Param("status") ProductStatus status);
 }

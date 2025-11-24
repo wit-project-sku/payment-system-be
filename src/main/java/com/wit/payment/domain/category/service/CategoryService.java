@@ -35,11 +35,12 @@ public interface CategoryService {
   void deleteCategory(Long categoryId);
 
   /**
-   * 전체 카테고리 목록과, 첫 번째 카테고리의 상품 목록을 함께 반환합니다.
+   * 첫 번째 카테고리 및 해당 카테고리의 상품 목록을 조회합니다.
    *
-   * <p>프론트 화면에서 첫 로딩 시 상단 탭(카테고리 목록)과 첫 번째 카테고리의 상품 목록을 동시에 렌더링할 수 있도록 설계된 API입니다.
+   * <p>kioskId가 전달되면 해당 키오스크에 노출되는 상품만 필터링합니다.
    *
-   * @return FirstCategoryResponse 전체 카테고리 목록 + 첫 번째 카테고리의 상품 목록
+   * @param kioskId 필터링할 키오스크 ID (선택값, null이면 전체 상품)
+   * @return 첫 번째 카테고리 정보 및 그 카테고리의 상품 목록
    */
-  FirstCategoryResponse getFirstCategoryWithProducts();
+  FirstCategoryResponse getFirstCategoryWithProducts(Long kioskId);
 }

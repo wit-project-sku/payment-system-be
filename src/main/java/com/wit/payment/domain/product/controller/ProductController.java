@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -66,18 +67,22 @@ public interface ProductController {
           Long productId);
 
   @Operation(
-      summary = "카테고리별 상품 목록 조회 API",
-      description =
-          "categoryId에 따른 상품 목록을 조회합니다. " + "대표 이미지 1장과 subTitle만 포함하며 description은 포함하지 않습니다.")
-  @GetMapping("/categories/{category-id}/products")
-  ResponseEntity<BaseResponse<List<ProductSummaryResponse>>> getProductsByCategory(
-      @Parameter(description = "카테고리 식별자", example = "1") @PathVariable("category-id")
-          Long categoryId);
-
-  @Operation(
       summary = "상품 상세 조회 API",
       description = "상품 상세페이지에서 사용할 모든 정보(모든 이미지와 description 포함)를 조회합니다.")
   @GetMapping("/products/{product-id}")
   ResponseEntity<BaseResponse<ProductDetailResponse>> getProductDetail(
       @Parameter(description = "상품 식별자", example = "1") @PathVariable("product-id") Long productId);
+
+  @Operation(
+      summary = "키오스크 기준 카테고리별 상품 목록 조회 API",
+      description =
+          "대표 이미지 1장과 subTitle만 포함하며 description은 포함하지 않습니다."
+              + "kiosk-id 쿼리 스트링이 존재하면 해당 키오스크에 노출되는 상품만 필터링합니다.")
+  @GetMapping("/categories/{category-id}/products")
+  ResponseEntity<BaseResponse<List<ProductSummaryResponse>>> getProductsByCategory(
+      @Parameter(description = "카테고리 식별자", example = "1") @PathVariable("category-id")
+          Long categoryId,
+      @Parameter(description = "필터링할 키오스크 식별자(선택)", example = "1")
+          @RequestParam(value = "kiosk-id", required = false)
+          Long kioskId);
 }
