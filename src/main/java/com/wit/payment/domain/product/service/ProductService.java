@@ -60,16 +60,6 @@ public interface ProductService {
   void hardDeleteProduct(Long productId);
 
   /**
-   * 특정 카테고리의 상품 목록을 조회합니다.
-   *
-   * <p>대표 이미지(썸네일) 한 장만 포함하며, description은 포함하지 않습니다.
-   *
-   * @param categoryId 카테고리 식별자
-   * @return 상품 요약 응답 리스트
-   */
-  List<ProductSummaryResponse> getProductsByCategory(Long categoryId);
-
-  /**
    * 상품 상세 정보를 조회합니다.
    *
    * <p>썸네일 및 모든 디테일 이미지를 포함합니다.
@@ -78,4 +68,15 @@ public interface ProductService {
    * @return 상품 상세 응답
    */
   ProductDetailResponse getProductDetail(Long productId);
+
+  /**
+   * 특정 카테고리의 상품 목록을 조회합니다.
+   *
+   * <p>대표 이미지(썸네일) 한 장만 포함하며, description은 포함하지 않습니다. kioskId가 전달되면 해당 키오스크에 노출되는 상품만 필터링하여 조회합니다.
+   *
+   * @param categoryId 카테고리 식별자
+   * @param kioskId 필터링할 키오스크 식별자(선택, null일 경우 전체)
+   * @return 상품 요약 응답 리스트
+   */
+  List<ProductSummaryResponse> getProductsByCategory(Long categoryId, Long kioskId);
 }

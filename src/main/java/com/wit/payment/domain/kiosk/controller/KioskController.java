@@ -23,7 +23,7 @@ import com.wit.payment.global.response.BaseResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
-@Tag(name = "Admin Kiosk API", description = "관리자용 키오스크 관리 API")
+@Tag(name = "Kiosk", description = "키오스크 관리 API")
 @RequestMapping("/api/admin/kiosks")
 public interface KioskController {
 

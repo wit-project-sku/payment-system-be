@@ -50,9 +50,13 @@ public class CategoryControllerImpl implements CategoryController {
   }
 
   @Override
-  public ResponseEntity<BaseResponse<FirstCategoryResponse>> getFirstCategoryWithProducts() {
-    FirstCategoryResponse response = categoryService.getFirstCategoryWithProducts();
-    return ResponseEntity.status(HttpStatus.OK)
-        .body(BaseResponse.success("첫 번째 카테고리 및 상품 목록을 조회했습니다.", response));
+  public ResponseEntity<BaseResponse<FirstCategoryResponse>> getFirstCategoryWithProducts(
+      Long kioskId) {
+    FirstCategoryResponse response = categoryService.getFirstCategoryWithProducts(kioskId);
+
+    String message =
+        kioskId == null ? "첫 번째 카테고리 및 상품 목록을 조회했습니다." : "첫 번째 카테고리 및 키오스크 기준 상품 목록을 조회했습니다.";
+
+    return ResponseEntity.status(HttpStatus.OK).body(BaseResponse.success(message, response));
   }
 }
