@@ -1,14 +1,7 @@
-/* 
- * Copyright (c) WIT Global 
+/*
+ * Copyright (c) WIT Global
  */
 package com.wit.payment.global.s3.service;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.UUID;
-
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.AmazonS3Exception;
@@ -23,22 +16,30 @@ import com.wit.payment.global.s3.dto.S3Response;
 import com.wit.payment.global.s3.entity.PathName;
 import com.wit.payment.global.s3.exception.S3ErrorCode;
 import com.wit.payment.global.s3.mapper.S3Mapper;
-
+import java.io.IOException;
+import java.util.List;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class S3Service {
 
-  private static final long MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024L;
+  @Value("${app.file.max-size-bytes}")
+  private long maxFileSizeBytes;
 
   private final AmazonS3 amazonS3;
   private final S3Config s3Config;
   private final S3Mapper s3Mapper;
 
-  /** Multipart 이미지 파일을 업로드하고, S3Response를 반환합니다. */
+  /**
+   * Multipart 이미지 파일을 업로드하고, S3Response를 반환합니다.
+   */
   public S3Response uploadImage(PathName pathName, MultipartFile file) {
 
     String keyName = uploadFile(pathName, file);
@@ -53,7 +54,9 @@ public class S3Service {
     return response;
   }
 
-  /** Multipart 파일을 지정한 PathName 경로에 업로드하고 S3 객체 keyName을 반환합니다. */
+  /**
+   * Multipart 파일을 지정한 PathName 경로에 업로드하고 S3 객체 keyName을 반환합니다.
+   */
   public String uploadFile(PathName pathName, MultipartFile file) {
 
     validateFile(file);
@@ -91,7 +94,9 @@ public class S3Service {
     }
   }
 
-  /** keyName으로 S3에서 특정 파일을 삭제합니다. */
+  /**
+   * keyName으로 S3에서 특정 파일을 삭제합니다.
+   */
   public void deleteFile(String keyName) {
 
     assertFileExists(keyName);
@@ -110,7 +115,9 @@ public class S3Service {
     }
   }
 
-  /** 지정된 PathName 경로의 모든 파일 목록을 조회합니다. */
+  /**
+   * 지정된 PathName 경로의 모든 파일 목록을 조회합니다.
+   */
   public List<S3Response> getAllFiles(PathName pathName) {
 
     String prefix = getPrefix(pathName);
@@ -141,7 +148,9 @@ public class S3Service {
     }
   }
 
-  /** PathName + 파일명으로 파일을 삭제합니다. */
+  /**
+   * PathName + 파일명으로 파일을 삭제합니다.
+   */
   public void deleteFile(PathName pathName, String fileName) {
 
     String keyName = getPrefix(pathName) + "/" + fileName;
@@ -151,7 +160,9 @@ public class S3Service {
     deleteFile(keyName);
   }
 
-  /** 이미지 URL에서 keyName(path + fileName)을 추출하여 파일을 삭제합니다. */
+  /**
+   * 이미지 URL에서 keyName(path + fileName)을 추출하여 파일을 삭제합니다.
+   */
   public void deleteByUrl(String url) {
 
     log.info("URL 기반 파일 삭제 요청 - url: {}", url);
@@ -165,11 +176,11 @@ public class S3Service {
 
   private void validateFile(MultipartFile file) {
 
-    if (file.getSize() > MAX_FILE_SIZE_BYTES) {
+    if (file.getSize() > maxFileSizeBytes) {
       log.warn(
           "파일 사이즈 초과 - size: {} bytes, limit: {} bytes, originalFilename: {}",
           file.getSize(),
-          MAX_FILE_SIZE_BYTES,
+          maxFileSizeBytes,
           file.getOriginalFilename());
       throw new CustomException(S3ErrorCode.FILE_SIZE_INVALID);
     }
