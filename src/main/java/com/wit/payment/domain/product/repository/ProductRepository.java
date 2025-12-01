@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import com.wit.payment.domain.category.entity.Category;
 import com.wit.payment.domain.product.entity.Product;
 import com.wit.payment.domain.product.entity.ProductStatus;
 
@@ -32,4 +33,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
       @Param("categoryId") Long categoryId,
       @Param("kioskId") Long kioskId,
       @Param("status") ProductStatus status);
+
+  boolean existsByCategoryAndName(Category category, String name);
 }

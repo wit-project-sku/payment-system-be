@@ -37,11 +37,15 @@ public class CategoryServiceImpl implements CategoryService {
   @Override
   @Transactional
   public CategoryResponse createCategory(CreateCategoryRequest request) {
+
+    if (categoryRepository.existsByName(request.getName())) {
+      throw new CustomException(CategoryErrorCode.CATEGORY_ALREADY_EXISTS);
+    }
+
     Category category = categoryMapper.toCategory(request);
-
     Category saved = categoryRepository.save(category);
-    log.info("카테고리 생성 성공 - categoryId: {}", saved.getId());
 
+    log.info("카테고리 생성 성공 - categoryId: {}", saved.getId());
     return categoryMapper.toCategoryResponse(saved);
   }
 

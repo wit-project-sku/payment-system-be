@@ -36,7 +36,7 @@ public class Kiosk extends BaseTimeEntity {
   @Column(name = "id")
   private Long id;
 
-  @Column(name = "name", nullable = false, length = 50)
+  @Column(name = "name", nullable = false, unique = true)
   private String name;
 
   @OneToMany(mappedBy = "kiosk", cascade = CascadeType.ALL, orphanRemoval = true)

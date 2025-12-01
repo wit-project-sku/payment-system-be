@@ -56,13 +56,16 @@ public class ProductServiceImpl implements ProductService {
 
     validateImages(images);
 
-    Category store =
+    Category category =
         storeRepository
             .findById(categoryId)
             .orElseThrow(() -> new CustomException(CategoryErrorCode.CATEGORY_NOT_FOUND));
 
-    Product product = productMapper.toProduct(store, request);
+    if (productRepository.existsByCategoryAndName(category, request.getName())) {
+      throw new CustomException(ProductErrorCode.PRODUCT_ALREADY_EXISTS);
+    }
 
+    Product product = productMapper.toProduct(category, request);
     Product saved = productRepository.save(product);
 
     List<String> imageUrls = toImageUrls(images);
@@ -82,7 +85,7 @@ public class ProductServiceImpl implements ProductService {
       saved.updateKiosks(kiosks);
     }
 
-    log.info("상품 생성 성공 - productId: {}, storeId: {}", saved.getId(), categoryId);
+    log.info("상품 생성 성공 - productId: {}, categoryId: {}", saved.getId(), categoryId);
     return productMapper.toProductDetailResponse(saved);
   }
 

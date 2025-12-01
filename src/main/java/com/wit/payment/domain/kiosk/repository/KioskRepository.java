@@ -12,4 +12,6 @@ import com.wit.payment.domain.kiosk.entity.Kiosk;
 public interface KioskRepository extends JpaRepository<Kiosk, Long> {
 
   List<Kiosk> findByIdIn(List<Long> ids);
+
+  boolean existsByName(String name);
 }

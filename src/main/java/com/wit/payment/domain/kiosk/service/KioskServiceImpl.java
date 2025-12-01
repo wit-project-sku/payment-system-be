@@ -31,6 +31,11 @@ public class KioskServiceImpl implements KioskService {
   @Override
   @Transactional
   public KioskResponse createKiosk(KioskRequest request) {
+
+    if (kioskRepository.existsByName(request.getName())) {
+      throw new CustomException(KioskErrorCode.KIOSK_ALREADY_EXISTS);
+    }
+
     Kiosk kiosk = kioskMapper.toKiosk(request);
     Kiosk saved = kioskRepository.save(kiosk);
 

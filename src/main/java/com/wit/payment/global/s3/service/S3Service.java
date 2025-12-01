@@ -1,7 +1,17 @@
-/*
- * Copyright (c) WIT Global
+/* 
+ * Copyright (c) WIT Global 
  */
 package com.wit.payment.global.s3.service;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.List;
+import java.util.UUID;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.AmazonS3Exception;
@@ -10,20 +20,17 @@ import com.amazonaws.services.s3.model.ListObjectsV2Request;
 import com.amazonaws.services.s3.model.ListObjectsV2Result;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
+import com.sksamuel.scrimage.ImmutableImage;
+import com.sksamuel.scrimage.webp.WebpWriter;
 import com.wit.payment.global.exception.CustomException;
 import com.wit.payment.global.s3.S3Config;
 import com.wit.payment.global.s3.dto.S3Response;
 import com.wit.payment.global.s3.entity.PathName;
 import com.wit.payment.global.s3.exception.S3ErrorCode;
 import com.wit.payment.global.s3.mapper.S3Mapper;
-import java.io.IOException;
-import java.util.List;
-import java.util.UUID;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
 @Service
@@ -33,12 +40,16 @@ public class S3Service {
   @Value("${app.file.max-size-bytes}")
   private long maxFileSizeBytes;
 
+  private static final int WEBP_QUALITY = 90;
+
   private final AmazonS3 amazonS3;
   private final S3Config s3Config;
   private final S3Mapper s3Mapper;
 
   /**
    * Multipart 이미지 파일을 업로드하고, S3Response를 반환합니다.
+   *
+   * <p>원본 포맷(jpg, png 등)과 관계없이 서버에서 WebP로 변환 후 저장합니다.
    */
   public S3Response uploadImage(PathName pathName, MultipartFile file) {
 
@@ -56,25 +67,30 @@ public class S3Service {
 
   /**
    * Multipart 파일을 지정한 PathName 경로에 업로드하고 S3 객체 keyName을 반환합니다.
+   *
+   * <p>업로드 시 WebP 포맷으로 변환하여 저장합니다.
    */
   public String uploadFile(PathName pathName, MultipartFile file) {
 
     validateFile(file);
 
-    String extension = getFileExtension(file.getOriginalFilename());
-    String keyName = createKeyName(pathName, extension);
+    // 1) WebP 포맷으로 변환
+    byte[] webpBytes = convertToWebp(file);
+
+    // 2) keyName 및 메타데이터 생성
+    String keyName = createKeyName(pathName, ".webp");
 
     ObjectMetadata metadata = new ObjectMetadata();
-    metadata.setContentLength(file.getSize());
-    metadata.setContentType(file.getContentType());
+    metadata.setContentLength(webpBytes.length);
+    metadata.setContentType("image/webp");
 
-    try {
+    try (ByteArrayInputStream inputStream = new ByteArrayInputStream(webpBytes)) {
       amazonS3.putObject(
-          new PutObjectRequest(s3Config.getBucket(), keyName, file.getInputStream(), metadata));
+          new PutObjectRequest(s3Config.getBucket(), keyName, inputStream, metadata));
 
       log.info("파일 업로드 성공 - bucket: {}, keyName: {}", s3Config.getBucket(), keyName);
-
       return keyName;
+
     } catch (AmazonS3Exception e) {
       log.error(
           "S3 업로드 중 AmazonS3Exception 발생 - bucket: {}, keyName: {}, message: {}",
@@ -83,6 +99,7 @@ public class S3Service {
           e.getMessage(),
           e);
       throw new CustomException(S3ErrorCode.S3_CONNECTION_FAILED);
+
     } catch (IOException e) {
       log.error(
           "S3 업로드 중 IO 예외 발생 - bucket: {}, keyName: {}, message: {}",
@@ -94,9 +111,7 @@ public class S3Service {
     }
   }
 
-  /**
-   * keyName으로 S3에서 특정 파일을 삭제합니다.
-   */
+  /** keyName으로 S3에서 특정 파일을 삭제합니다. */
   public void deleteFile(String keyName) {
 
     assertFileExists(keyName);
@@ -104,6 +119,7 @@ public class S3Service {
     try {
       amazonS3.deleteObject(new DeleteObjectRequest(s3Config.getBucket(), keyName));
       log.info("파일 삭제 성공 - bucket: {}, keyName: {}", s3Config.getBucket(), keyName);
+
     } catch (AmazonS3Exception e) {
       log.error(
           "S3 삭제 중 AmazonS3Exception 발생 - bucket: {}, keyName: {}, message: {}",
@@ -115,9 +131,7 @@ public class S3Service {
     }
   }
 
-  /**
-   * 지정된 PathName 경로의 모든 파일 목록을 조회합니다.
-   */
+  /** 지정된 PathName 경로의 모든 파일 목록을 조회합니다. */
   public List<S3Response> getAllFiles(PathName pathName) {
 
     String prefix = getPrefix(pathName);
@@ -137,6 +151,7 @@ public class S3Service {
           responses.size());
 
       return responses;
+
     } catch (AmazonS3Exception e) {
       log.error(
           "S3 파일 목록 조회 중 AmazonS3Exception 발생 - bucket: {}, prefix: {}, message: {}",
@@ -148,9 +163,7 @@ public class S3Service {
     }
   }
 
-  /**
-   * PathName + 파일명으로 파일을 삭제합니다.
-   */
+  /** PathName + 파일명으로 파일을 삭제합니다. */
   public void deleteFile(PathName pathName, String fileName) {
 
     String keyName = getPrefix(pathName) + "/" + fileName;
@@ -160,9 +173,7 @@ public class S3Service {
     deleteFile(keyName);
   }
 
-  /**
-   * 이미지 URL에서 keyName(path + fileName)을 추출하여 파일을 삭제합니다.
-   */
+  /** 이미지 URL에서 keyName(path + fileName)을 추출하여 파일을 삭제합니다. */
   public void deleteByUrl(String url) {
 
     log.info("URL 기반 파일 삭제 요청 - url: {}", url);
@@ -188,10 +199,10 @@ public class S3Service {
     String contentType = file.getContentType();
     if (contentType == null || !contentType.startsWith("image/")) {
       log.warn(
-          "허용되지 않는 파일 타입 - contentType: {}, originalFilename: {}",
+          "허용되지 않는 Content-Type - contentType: {}, originalFilename: {}",
           contentType,
           file.getOriginalFilename());
-      throw new CustomException(S3ErrorCode.FILE_TYPE_INVALID);
+      throw new CustomException(S3ErrorCode.UNSUPPORTED_CONTENT_TYPE);
     }
   }
 
@@ -229,13 +240,51 @@ public class S3Service {
     };
   }
 
-  private String getFileExtension(String originalName) {
+  /** MultipartFile을 WebP 포맷의 byte[]로 변환합니다. (scrimage 사용) */
+  private byte[] convertToWebp(MultipartFile file) {
 
-    if (originalName == null || !originalName.contains(".")) {
-      log.warn("유효하지 않은 파일명 - originalName: {}", originalName);
-      throw new CustomException(S3ErrorCode.FILE_TYPE_INVALID);
+    try {
+      ImmutableImage image;
+      try {
+        image = ImmutableImage.loader().fromStream(file.getInputStream());
+      } catch (IOException e) {
+        log.error(
+            "이미지 디코딩 오류 - originalFilename: {}, message: {}",
+            file.getOriginalFilename(),
+            e.getMessage());
+        throw new CustomException(S3ErrorCode.IMAGE_READ_FAILED);
+      }
+
+      if (image == null) {
+        log.warn("이미지 디코딩 실패 - originalFilename: {}", file.getOriginalFilename());
+        throw new CustomException(S3ErrorCode.IMAGE_READ_FAILED);
+      }
+
+      // scrimage 4.2.0: 품질(Q) 0~100
+      WebpWriter writer = WebpWriter.DEFAULT.withQ(WEBP_QUALITY);
+
+      ByteArrayOutputStream baos = new ByteArrayOutputStream();
+      try {
+        image.forWriter(writer).write(baos); // 핵심 변경
+      } catch (IOException e) {
+        log.error(
+            "WebP 변환 중 IO 오류 - originalFilename: {}, message: {}",
+            file.getOriginalFilename(),
+            e.getMessage());
+        throw new CustomException(S3ErrorCode.IMAGE_WRITE_FAILED);
+      }
+
+      return baos.toByteArray();
+
+    } catch (CustomException e) {
+      throw e;
+
+    } catch (Exception e) {
+      log.error(
+          "WebP 변환 중 예기치 않은 오류 - originalFilename: {}, message: {}",
+          file.getOriginalFilename(),
+          e.getMessage());
+      throw new CustomException(S3ErrorCode.WEBP_ENCODING_ERROR);
     }
-
-    return originalName.substring(originalName.lastIndexOf('.')).toLowerCase();
   }
 }
