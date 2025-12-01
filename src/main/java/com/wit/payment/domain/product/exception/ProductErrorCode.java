@@ -1,12 +1,14 @@
-/*
- * Copyright (c) WIT Global
+/* 
+ * Copyright (c) WIT Global 
  */
 package com.wit.payment.domain.product.exception;
 
+import org.springframework.http.HttpStatus;
+
 import com.wit.payment.global.exception.model.BaseErrorCode;
+
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import org.springframework.http.HttpStatus;
 
 @Getter
 @AllArgsConstructor

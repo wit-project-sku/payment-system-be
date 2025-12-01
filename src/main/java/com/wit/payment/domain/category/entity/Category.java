@@ -1,15 +1,17 @@
-/*
- * Copyright (c) WIT Global
+/* 
+ * Copyright (c) WIT Global 
  */
 package com.wit.payment.domain.category.entity;
 
-import com.wit.payment.global.common.BaseTimeEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+
+import com.wit.payment.global.common.BaseTimeEntity;
+
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

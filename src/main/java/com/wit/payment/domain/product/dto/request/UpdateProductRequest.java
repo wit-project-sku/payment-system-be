@@ -1,12 +1,15 @@
-/*
- * Copyright (c) WIT Global
+/* 
+ * Copyright (c) WIT Global 
  */
 package com.wit.payment.domain.product.dto.request;
 
-import com.wit.payment.domain.product.entity.ProductStatus;
-import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.Size;
 import java.util.List;
+
+import jakarta.validation.constraints.Size;
+
+import com.wit.payment.domain.product.entity.ProductStatus;
+
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
