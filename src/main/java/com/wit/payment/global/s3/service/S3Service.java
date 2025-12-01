@@ -1,7 +1,17 @@
-/*
- * Copyright (c) WIT Global
+/* 
+ * Copyright (c) WIT Global 
  */
 package com.wit.payment.global.s3.service;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.List;
+import java.util.UUID;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.AmazonS3Exception;
@@ -18,16 +28,9 @@ import com.wit.payment.global.s3.dto.S3Response;
 import com.wit.payment.global.s3.entity.PathName;
 import com.wit.payment.global.s3.exception.S3ErrorCode;
 import com.wit.payment.global.s3.mapper.S3Mapper;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.util.List;
-import java.util.UUID;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
 @Service
@@ -108,9 +111,7 @@ public class S3Service {
     }
   }
 
-  /**
-   * keyName으로 S3에서 특정 파일을 삭제합니다.
-   */
+  /** keyName으로 S3에서 특정 파일을 삭제합니다. */
   public void deleteFile(String keyName) {
 
     assertFileExists(keyName);
@@ -130,9 +131,7 @@ public class S3Service {
     }
   }
 
-  /**
-   * 지정된 PathName 경로의 모든 파일 목록을 조회합니다.
-   */
+  /** 지정된 PathName 경로의 모든 파일 목록을 조회합니다. */
   public List<S3Response> getAllFiles(PathName pathName) {
 
     String prefix = getPrefix(pathName);
@@ -164,9 +163,7 @@ public class S3Service {
     }
   }
 
-  /**
-   * PathName + 파일명으로 파일을 삭제합니다.
-   */
+  /** PathName + 파일명으로 파일을 삭제합니다. */
   public void deleteFile(PathName pathName, String fileName) {
 
     String keyName = getPrefix(pathName) + "/" + fileName;
@@ -176,9 +173,7 @@ public class S3Service {
     deleteFile(keyName);
   }
 
-  /**
-   * 이미지 URL에서 keyName(path + fileName)을 추출하여 파일을 삭제합니다.
-   */
+  /** 이미지 URL에서 keyName(path + fileName)을 추출하여 파일을 삭제합니다. */
   public void deleteByUrl(String url) {
 
     log.info("URL 기반 파일 삭제 요청 - url: {}", url);
@@ -245,9 +240,7 @@ public class S3Service {
     };
   }
 
-  /**
-   * MultipartFile을 WebP 포맷의 byte[]로 변환합니다. (scrimage 사용)
-   */
+  /** MultipartFile을 WebP 포맷의 byte[]로 변환합니다. (scrimage 사용) */
   private byte[] convertToWebp(MultipartFile file) {
 
     try {
