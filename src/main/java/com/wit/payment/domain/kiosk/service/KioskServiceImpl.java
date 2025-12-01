@@ -1,12 +1,7 @@
-/* 
- * Copyright (c) WIT Global 
+/*
+ * Copyright (c) WIT Global
  */
 package com.wit.payment.domain.kiosk.service;
-
-import java.util.List;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.wit.payment.domain.kiosk.dto.request.KioskRequest;
 import com.wit.payment.domain.kiosk.dto.response.KioskResponse;
@@ -15,9 +10,11 @@ import com.wit.payment.domain.kiosk.exception.KioskErrorCode;
 import com.wit.payment.domain.kiosk.mapper.KioskMapper;
 import com.wit.payment.domain.kiosk.repository.KioskRepository;
 import com.wit.payment.global.exception.CustomException;
-
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Slf4j
@@ -31,6 +28,11 @@ public class KioskServiceImpl implements KioskService {
   @Override
   @Transactional
   public KioskResponse createKiosk(KioskRequest request) {
+
+    if (kioskRepository.existsByName(request.getName())) {
+      throw new CustomException(KioskErrorCode.KIOSK_ALREADY_EXISTS);
+    }
+
     Kiosk kiosk = kioskMapper.toKiosk(request);
     Kiosk saved = kioskRepository.save(kiosk);
 

@@ -1,12 +1,7 @@
-/* 
- * Copyright (c) WIT Global 
+/*
+ * Copyright (c) WIT Global
  */
 package com.wit.payment.domain.category.service;
-
-import java.util.List;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.wit.payment.domain.category.dto.request.CreateCategoryRequest;
 import com.wit.payment.domain.category.dto.response.CategoryResponse;
@@ -19,9 +14,11 @@ import com.wit.payment.domain.product.dto.response.ProductSummaryResponse;
 import com.wit.payment.domain.product.repository.ProductRepository;
 import com.wit.payment.domain.product.service.ProductService;
 import com.wit.payment.global.exception.CustomException;
-
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Slf4j
@@ -37,11 +34,15 @@ public class CategoryServiceImpl implements CategoryService {
   @Override
   @Transactional
   public CategoryResponse createCategory(CreateCategoryRequest request) {
+
+    if (categoryRepository.existsByName(request.getName())) {
+      throw new CustomException(CategoryErrorCode.CATEGORY_ALREADY_EXISTS);
+    }
+
     Category category = categoryMapper.toCategory(request);
-
     Category saved = categoryRepository.save(category);
-    log.info("카테고리 생성 성공 - categoryId: {}", saved.getId());
 
+    log.info("카테고리 생성 성공 - categoryId: {}", saved.getId());
     return categoryMapper.toCategoryResponse(saved);
   }
 

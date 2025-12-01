@@ -1,11 +1,9 @@
-/* 
- * Copyright (c) WIT Global 
+/*
+ * Copyright (c) WIT Global
  */
 package com.wit.payment.domain.kiosk.entity;
 
-import java.util.ArrayList;
-import java.util.List;
-
+import com.wit.payment.global.common.BaseTimeEntity;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -14,9 +12,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-
-import com.wit.payment.global.common.BaseTimeEntity;
-
+import java.util.ArrayList;
+import java.util.List;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -36,7 +33,7 @@ public class Kiosk extends BaseTimeEntity {
   @Column(name = "id")
   private Long id;
 
-  @Column(name = "name", nullable = false, length = 50)
+  @Column(name = "name", nullable = false, unique = true)
   private String name;
 
   @OneToMany(mappedBy = "kiosk", cascade = CascadeType.ALL, orphanRemoval = true)

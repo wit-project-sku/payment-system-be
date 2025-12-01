@@ -1,14 +1,7 @@
-/* 
- * Copyright (c) WIT Global 
+/*
+ * Copyright (c) WIT Global
  */
 package com.wit.payment.domain.product.service;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
 import com.wit.payment.domain.category.entity.Category;
 import com.wit.payment.domain.category.exception.CategoryErrorCode;
@@ -30,9 +23,13 @@ import com.wit.payment.domain.product.repository.ProductRepository;
 import com.wit.payment.global.exception.CustomException;
 import com.wit.payment.global.s3.entity.PathName;
 import com.wit.payment.global.s3.service.S3Service;
-
+import java.util.ArrayList;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @Slf4j
@@ -56,13 +53,16 @@ public class ProductServiceImpl implements ProductService {
 
     validateImages(images);
 
-    Category store =
+    Category category =
         storeRepository
             .findById(categoryId)
             .orElseThrow(() -> new CustomException(CategoryErrorCode.CATEGORY_NOT_FOUND));
 
-    Product product = productMapper.toProduct(store, request);
+    if (productRepository.existsByCategoryAndName(category, request.getName())) {
+      throw new CustomException(ProductErrorCode.PRODUCT_ALREADY_EXISTS);
+    }
 
+    Product product = productMapper.toProduct(category, request);
     Product saved = productRepository.save(product);
 
     List<String> imageUrls = toImageUrls(images);
@@ -82,7 +82,7 @@ public class ProductServiceImpl implements ProductService {
       saved.updateKiosks(kiosks);
     }
 
-    log.info("상품 생성 성공 - productId: {}, storeId: {}", saved.getId(), categoryId);
+    log.info("상품 생성 성공 - productId: {}, categoryId: {}", saved.getId(), categoryId);
     return productMapper.toProductDetailResponse(saved);
   }
 
@@ -248,7 +248,9 @@ public class ProductServiceImpl implements ProductService {
     }
   }
 
-  /** 상품 생성 시 이미지가 최소 1장 이상 최대 4장 이하로 존재하는지 검증합니다. */
+  /**
+   * 상품 생성 시 이미지가 최소 1장 이상 최대 4장 이하로 존재하는지 검증합니다.
+   */
   private void validateImages(List<MultipartFile> images) {
 
     if (images == null || images.isEmpty()) {
