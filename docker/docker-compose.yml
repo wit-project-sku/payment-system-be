@@ -1,7 +1,7 @@
 services:
   app:
     image: ${DOCKER_USERNAME}/${DOCKER_REPO}:latest
-    container_name: payment
+    container_name: langrow
     expose:
       - "8080"
     environment:
@@ -15,7 +15,7 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - payment-network
+      - lan-network
     restart: unless-stopped
 
   mysql:
@@ -34,7 +34,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - payment-network
+      - lan-network
     restart: unless-stopped
 
   redis:
@@ -49,7 +49,7 @@ services:
       interval: 5s
       retries: 10
     networks:
-      - payment-network
+      - lan-network
     restart: unless-stopped
 
   nginx:
@@ -66,7 +66,7 @@ services:
       - app
       - dozzle
     networks:
-      - payment-network
+      - lan-network
     restart: unless-stopped
 
   dozzle:
@@ -75,11 +75,11 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
-      - payment-network
+      - lan-network
     restart: unless-stopped
 
 networks:
-  payment-network:
+  lan-network:
     driver: bridge
 
 volumes:
