@@ -47,12 +47,12 @@ public class SecurityConfig {
                               .getWriter()
                               .write(
                                   """
-                          {
-                            "success": false,
-                            "code": 401,
-                            "message": "로그인이 필요합니다."
-                          }
-                          """);
+                                      {
+                                        "success": false,
+                                        "code": 401,
+                                        "message": "로그인이 필요합니다."
+                                      }
+                                      """);
                         })
                     .accessDeniedHandler(
                         (request, response, ex) -> {
@@ -63,12 +63,12 @@ public class SecurityConfig {
                               .getWriter()
                               .write(
                                   """
-                          {
-                            "success": false,
-                            "code": 403,
-                            "message": "접근 권한이 없습니다."
-                          }
-                          """);
+                                      {
+                                        "success": false,
+                                        "code": 403,
+                                        "message": "접근 권한이 없습니다."
+                                      }
+                                      """);
                         }))
         .authorizeHttpRequests(
             auth ->
@@ -86,7 +86,8 @@ public class SecurityConfig {
                         "/api/products/{product-id}",
                         "/api/categories/{category-id}/products",
                         "/api/categories",
-                        "/api/categories/first")
+                        "/api/categories/first",
+                        "/api/tl3800/*")
                     .permitAll()
                     .requestMatchers("/api/admin/**")
                     .hasRole("ADMIN")
