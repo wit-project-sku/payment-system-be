@@ -57,6 +57,9 @@ dependencies {
     // Image
     implementation("com.sksamuel.scrimage:scrimage-core:4.2.0")
     implementation("com.sksamuel.scrimage:scrimage-webp:4.2.0")
+
+    // 직렬포트
+    implementation("com.fazecast:jSerialComm:2.11.0")
 }
 
 tasks.named('test') {
