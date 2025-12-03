@@ -1,13 +1,14 @@
-/*
- * Copyright (c) WIT Global
+/* 
+ * Copyright (c) WIT Global 
  */
 package com.wit.payment.domain.terminal;
+
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Supplier;
 
 import com.wit.payment.global.tl3800.client.TL3800Client;
 import com.wit.payment.global.tl3800.payload.Requests;
 import com.wit.payment.global.tl3800.proto.TLPacket;
-import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Supplier;
 
 public class TL3800Gateway {
 

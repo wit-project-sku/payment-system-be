@@ -1,15 +1,16 @@
-/*
- * Copyright (c) WIT Global
+/* 
+ * Copyright (c) WIT Global 
  */
 package com.wit.payment.global.config;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 
 import com.wit.payment.global.tl3800.client.TL3800Client;
 import com.wit.payment.global.tl3800.payload.Requests;
 import com.wit.payment.global.tl3800.transport.SerialPortTransport;
 import com.wit.payment.global.tl3800.transport.TLTransport;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class TL3800Config {

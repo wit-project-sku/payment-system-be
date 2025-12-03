@@ -1,5 +1,5 @@
-/*
- * Copyright (c) WIT Global
+/* 
+ * Copyright (c) WIT Global 
  */
 package com.wit.payment.global.tl3800.util;
 
@@ -7,8 +7,7 @@ public final class Hex {
 
   private static final char[] HEX = "0123456789ABCDEF".toCharArray();
 
-  private Hex() {
-  }
+  private Hex() {}
 
   public static String toHex(byte[] b) {
     if (b == null) {

@@ -1,12 +1,13 @@
-/*
- * Copyright (c) WIT Global
+/* 
+ * Copyright (c) WIT Global 
  */
 package com.wit.payment.domain.terminal.service;
+
+import org.springframework.stereotype.Service;
 
 import com.wit.payment.global.tl3800.client.TL3800Client;
 import com.wit.payment.global.tl3800.payload.Requests;
 import com.wit.payment.global.tl3800.proto.TLPacket;
-import org.springframework.stereotype.Service;
 
 @Service
 public class TL3800Service {
