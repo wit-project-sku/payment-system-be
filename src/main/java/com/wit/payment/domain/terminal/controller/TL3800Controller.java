@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.wit.payment.domain.terminal.TL3800Gateway;
 import com.wit.payment.domain.terminal.dto.request.ApproveRequest;
+import com.wit.payment.domain.terminal.dto.request.CancelRequest;
 import com.wit.payment.domain.terminal.dto.response.PacketResponse;
 import com.wit.payment.global.tl3800.proto.TLPacket;
 import com.wit.payment.global.tl3800.util.Hex;
@@ -41,6 +42,30 @@ public class TL3800Controller {
   @PostMapping("/approve")
   public PacketResponse approve(@Valid @RequestBody ApproveRequest req) throws Exception {
     TLPacket p = gateway.approve(req.amount(), req.tax(), req.svc(), req.inst(), req.noSign());
+    return new PacketResponse(
+        p.catOrMid,
+        p.dateTime14,
+        String.valueOf(p.jobCode.code),
+        Byte.toUnsignedInt(p.responseCode),
+        Hex.toHex(p.data));
+  }
+
+  @PostMapping("/cancel")
+  public PacketResponse cancel(@Valid @RequestBody CancelRequest req) throws Exception {
+    TLPacket p =
+        gateway.cancel(
+            req.cancelType(),
+            req.tranType(),
+            req.amount(),
+            req.tax(),
+            req.svc(),
+            req.inst(),
+            req.noSign(),
+            req.approvalNo(),
+            req.orgDate(),
+            req.orgTime(),
+            req.extra());
+
     return new PacketResponse(
         p.catOrMid,
         p.dateTime14,

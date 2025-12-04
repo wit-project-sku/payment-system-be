@@ -35,12 +35,45 @@ public class TL3800Gateway {
     }
   }
 
+  /** 장치체크 (A/a) */
   public TLPacket deviceCheck() throws Exception {
     return call(requests::deviceCheck);
   }
 
+  /** 거래승인 (B/b) */
   public TLPacket approve(String amount, String tax, String svc, String inst, boolean noSign)
       throws Exception {
     return call(() -> requests.approve(amount, tax, svc, inst, noSign));
+  }
+
+  /** 거래취소 (C/c) */
+  public TLPacket cancel(
+      String cancelType,
+      String tranType,
+      String amount,
+      String tax,
+      String svc,
+      String inst,
+      boolean noSign,
+      String approvalNo,
+      String orgDate,
+      String orgTime,
+      String extra)
+      throws Exception {
+
+    return call(
+        () ->
+            requests.cancel(
+                cancelType,
+                tranType,
+                amount,
+                tax,
+                svc,
+                inst,
+                noSign,
+                approvalNo,
+                orgDate,
+                orgTime,
+                extra));
   }
 }

@@ -37,4 +37,38 @@ public class TL3800Service {
       client.close();
     }
   }
+
+  public TLPacket cancel(
+      String cancelType,
+      String tranType,
+      String amount,
+      String tax,
+      String svc,
+      String inst,
+      boolean noSign,
+      String approvalNo,
+      String orgDate,
+      String orgTime,
+      String extra)
+      throws Exception {
+
+    client.open();
+    try {
+      return client.requestResponse(
+          requests.cancel(
+              cancelType,
+              tranType,
+              amount,
+              tax,
+              svc,
+              inst,
+              noSign,
+              approvalNo,
+              orgDate,
+              orgTime,
+              extra));
+    } finally {
+      client.close();
+    }
+  }
 }
