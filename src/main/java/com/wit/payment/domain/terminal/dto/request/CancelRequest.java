@@ -7,41 +7,39 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
+@Schema(description = "결제 취소 요청 DTO")
 public record CancelRequest(
-
-    // 취소구분코드: “1”[요청전문 취소], “2”[직전 거래 취소], “3”[VAN무카드 취소], …
-    @NotBlank @Pattern(regexp = "[1-6]") String cancelType, // 취소구분코드
-
-    // 거래구분코드: “1”[IC 신용승인], “2”[RF/MS 신용승인], “3”[현금영수증], …
-    @NotBlank @Pattern(regexp = "[1234568]") String tranType, // 거래구분코드
-
-    // 승인금액(원거래금액+세금+봉사료), CHAR(10) 우측정렬 0패딩
-    @NotBlank @Pattern(regexp = "\\d{1,10}") String amount,
-
-    // 세금, CHAR(8) 우측정렬 0패딩
-    @NotBlank @Pattern(regexp = "\\d{1,8}") String tax,
-
-    // 봉사료, CHAR(8) 우측정렬 0패딩
-    @NotBlank @Pattern(regexp = "\\d{1,8}") String svc,
-
-    // 할부개월, CHAR(2) 우측정렬 0패딩
-    // 현금영수증(거래구분코드=3)일 때 소비자=00, 사업자=01 필수
-    @NotBlank @Pattern(regexp = "\\d{2}") String inst,
-
-    // 서명 여부: true → “1”(비서명), false → “2”(서명)
-    boolean noSign,
-
-    // 승인번호, 좌측정렬 space 채움, CHAR(12)
-    @NotBlank @Size(max = 12) String approvalNo,
-
-    // 원거래일자[YYYYMMDD], CHAR(8)
-    @NotBlank @Pattern(regexp = "\\d{8}") String orgDate,
-
-    // 원거래시간[hhmmss], CHAR(6)
-    // “무카드 취소” 시에는 거래일련번호 마지막 6자리
-    @NotBlank @Pattern(regexp = "\\d{6}") String orgTime,
-
-    // 부가정보(N자리, 좌측정렬), 없으면 null 또는 빈 문자열
-    // 카카오페이/현금영수증/PG무카드 취소/빌키취소 등에서 사용
-    @Size(max = 200) // 프로토콜 상 제한은 없지만, 보호 차원에서 임의 제한
-        String extra) {}
+    @Schema(description = "취소 구분 코드. 2는 직전 거래 취소 (1~6)", example = "2")
+        @NotBlank
+        @Pattern(regexp = "[1-6]")
+        String cancelType,
+    @Schema(description = "거래 구분 코드 (1,2,3,4,5,6,8)", example = "1")
+        @NotBlank
+        @Pattern(regexp = "[1234568]")
+        String tranType,
+    @Schema(description = "취소 금액 (원). 1~10자리 정수", example = "10")
+        @NotBlank
+        @Pattern(regexp = "\\d{1,10}")
+        String amount,
+    @Schema(description = "부가세. 1~8자리 정수", example = "0") @NotBlank @Pattern(regexp = "\\d{1,8}")
+        String tax,
+    @Schema(description = "봉사료. 1~8자리 정수", example = "0") @NotBlank @Pattern(regexp = "\\d{1,8}")
+        String svc,
+    @Schema(description = "할부개월. 2자리 (00 = 일시불)", example = "00")
+        @NotBlank
+        @Pattern(regexp = "\\d{2}")
+        String inst,
+    @Schema(description = "비서명 여부 (true=비서명, false=서명)", example = "true") boolean noSign,
+    @Schema(description = "원 승인번호 (최대 12자)", example = "03304901") @NotBlank @Size(max = 12)
+        String approvalNo,
+    @Schema(description = "원승인일자 (YYYYMMDD 형식)", example = "20251203")
+        @NotBlank
+        @Pattern(regexp = "\\d{8}")
+        String orgDate,
+    @Schema(description = "원승인시간 (hhmmss 형식)", example = "185306")
+        @NotBlank
+        @Pattern(regexp = "\\d{6}")
+        String orgTime,
+    @Schema(description = "부가 정보 (선택)", example = "") @Size(max = 200) String extra) {}
