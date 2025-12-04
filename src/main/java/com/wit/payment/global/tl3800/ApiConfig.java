@@ -1,12 +1,13 @@
-/*
- * Copyright (c) WIT Global
+/* 
+ * Copyright (c) WIT Global 
  */
 package com.wit.payment.global.tl3800;
 
-import com.wit.payment.global.tl3800.client.TL3800Client;
-import com.wit.payment.global.tl3800.payload.Requests;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import com.wit.payment.global.tl3800.client.TL3800Client;
+import com.wit.payment.global.tl3800.payload.Requests;
 
 @Configuration
 public class ApiConfig {

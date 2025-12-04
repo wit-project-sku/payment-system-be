@@ -7,9 +7,12 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 import org.springframework.stereotype.Component;
 
+import com.wit.payment.domain.pay.dto.response.PaymentIssueResponse;
+import com.wit.payment.domain.pay.dto.response.PaymentSummaryResponse;
 import com.wit.payment.domain.pay.entity.Payment;
 import com.wit.payment.domain.pay.entity.PaymentIssue;
 import com.wit.payment.domain.pay.entity.PaymentIssueStatus;
@@ -22,14 +25,9 @@ public class PaymentMapper {
   private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
   private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HHmmss");
 
-  /**
-   * TL 승인 응답 + 비즈니스 금액/할부 정보 → Payment 엔티티로 변환
-   *
-   * @param packet TL3800 승인 응답 패킷(b)
-   * @param amount 결제 금액(원) – 서버가 검증한 값
-   * @param inst 할부개월(“00”, “02”, …)
-   */
-  public Payment toPayment(TLPacket packet, int amount, String inst) {
+  /** TL 승인 응답 + 금액/할부 정보 → Payment 엔티티 변환 */
+  public Payment toPayment(TLPacket packet, long amount, String inst, boolean delivery) {
+
     LocalDate approvedDate = parseDate(packet.dateTime14);
     LocalTime approvedTime = parseTime(packet.dateTime14);
 
@@ -41,52 +39,80 @@ public class PaymentMapper {
         .approvedTime(approvedTime)
         .approvalNoRaw(approvalNoRaw)
         .approvalNo(approvalNo)
-        .amount(amount)
+        .amount((int) amount)
         .installment(inst)
+        .deliveryAddress(delivery ? "" : null)
+        .etc(delivery ? "" : null)
         .build();
   }
 
-  /**
-   * 에러 상황(타임아웃, NAK 반복, 응답코드 오류 등)을 PaymentIssue로 변환. – 발생일시: now() – status: UNRESOLVED
-   * (엔티티의 @Builder.Default)
-   */
-  public PaymentIssue toIssue(int amount, String message) {
-    LocalDate nowDate = LocalDate.now();
-    LocalTime nowTime = LocalTime.now();
-
+  /** 장애/예외 상황 → PaymentIssue 엔티티 변환 */
+  public PaymentIssue toIssue(long amount, String message) {
     return PaymentIssue.builder()
-        .occurredDate(nowDate)
-        .occurredTime(nowTime)
-        .amount(amount)
+        .occurredDate(LocalDate.now())
+        .occurredTime(LocalTime.now())
+        .amount((int) amount)
         .message(message)
-        .status(PaymentIssueStatus.UNRESOLVED) // 명시해두는 편이 의도 전달에 좋음
+        .status(PaymentIssueStatus.UNRESOLVED)
         .build();
   }
 
-  /**
-   * TL 프로토콜 기준 승인 응답(b)의 data 영역에서 승인번호(또는 선불정보) 12바이트를 추출.
-   *
-   * <p>data 구조(요약): 0: 카드번호(20) 20: 승인금액(10) 30: 세금/잔여횟수(8) 38: 봉사료/사용횟수(8) 46: 할부개월(2) 48:
-   * 승인번호/선불정보(12) ← 여기
-   */
+  /** Payment -> Response DTO 변환 */
+  public PaymentSummaryResponse toPaymentResponse(Payment payment) {
+    return PaymentSummaryResponse.builder()
+        .paymentId(payment.getId())
+        .approvedDate(payment.getApprovedDate())
+        .approvedTime(payment.getApprovedTime())
+        .approvalNo(payment.getApprovalNo())
+        .amount(payment.getAmount())
+        .installment(payment.getInstallment())
+        .phoneNumber(payment.getPhoneNumber())
+        .deliveryAddress(payment.getDeliveryAddress())
+        .etc(payment.getEtc())
+        .build();
+  }
+
+  /** PaymentIssue -> Response DTO 변환 */
+  public PaymentIssueResponse toIssueResponse(PaymentIssue issue) {
+    return PaymentIssueResponse.builder()
+        .paymentIssueId(issue.getId())
+        .occurredDate(issue.getOccurredDate())
+        .occurredTime(issue.getOccurredTime())
+        .amount(issue.getAmount())
+        .message(issue.getMessage())
+        .status(issue.getStatus())
+        .build();
+  }
+
+  /** 리스트 변환용 매핑 */
+  public List<PaymentSummaryResponse> toPaymentResponseList(List<Payment> payments) {
+    if (payments == null) {
+      return List.of();
+    }
+    return payments.stream().map(this::toPaymentResponse).toList();
+  }
+
+  public List<PaymentIssueResponse> toIssueResponseList(List<PaymentIssue> issues) {
+    if (issues == null) {
+      return List.of();
+    }
+    return issues.stream().map(this::toIssueResponse).toList();
+  }
+
+  /** TL 프로토콜 승인번호 추출 (offset 기준) */
   private String extractApprovalNoRaw(byte[] data) {
     if (data == null || data.length < 60) {
-      // 프로토콜 위반/예외 상황 – 방어적인 처리
       return "";
     }
     final int offset = 20 + 10 + 8 + 8 + 2; // 48
-    final int len = 12;
-    return new String(data, offset, len, StandardCharsets.US_ASCII);
+    return new String(data, offset, 12, StandardCharsets.US_ASCII);
   }
 
   private LocalDate parseDate(String dateTime14) {
-    // dateTime14: "YYYYMMDDhhmmss"
-    String datePart = dateTime14.substring(0, 8);
-    return LocalDate.parse(datePart, DATE_FORMAT);
+    return LocalDate.parse(dateTime14.substring(0, 8), DATE_FORMAT);
   }
 
   private LocalTime parseTime(String dateTime14) {
-    String timePart = dateTime14.substring(8, 14);
-    return LocalTime.parse(timePart, TIME_FORMAT);
+    return LocalTime.parse(dateTime14.substring(8, 14), TIME_FORMAT);
   }
 }

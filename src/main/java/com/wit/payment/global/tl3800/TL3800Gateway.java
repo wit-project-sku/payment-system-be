@@ -1,13 +1,14 @@
-/*
- * Copyright (c) WIT Global
+/* 
+ * Copyright (c) WIT Global 
  */
 package com.wit.payment.global.tl3800;
+
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Supplier;
 
 import com.wit.payment.global.tl3800.client.TL3800Client;
 import com.wit.payment.global.tl3800.payload.Requests;
 import com.wit.payment.global.tl3800.proto.TLPacket;
-import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Supplier;
 
 public class TL3800Gateway {
 
@@ -34,24 +35,18 @@ public class TL3800Gateway {
     }
   }
 
-  /**
-   * 장치체크 (A/a)
-   */
+  /** 장치체크 (A/a) */
   public TLPacket deviceCheck() throws Exception {
     return call(requests::deviceCheck);
   }
 
-  /**
-   * 거래승인 (B/b)
-   */
+  /** 거래승인 (B/b) */
   public TLPacket approve(String amount, String tax, String svc, String inst, boolean noSign)
       throws Exception {
     return call(() -> requests.approve(amount, tax, svc, inst, noSign));
   }
 
-  /**
-   * 거래취소 (C/c)
-   */
+  /** 거래취소 (C/c) */
   public TLPacket cancel(
       String cancelType,
       String tranType,

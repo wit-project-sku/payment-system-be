@@ -1,11 +1,20 @@
-/*
- * Copyright (c) WIT Global
+/* 
+ * Copyright (c) WIT Global 
  */
 package com.wit.payment.domain.pay.service;
+
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.wit.payment.domain.pay.dto.request.PayItemRequest;
 import com.wit.payment.domain.pay.dto.request.PayRequest;
 import com.wit.payment.domain.pay.dto.response.PayResponse;
+import com.wit.payment.domain.pay.dto.response.PaymentIssueResponse;
+import com.wit.payment.domain.pay.dto.response.PaymentSummaryResponse;
 import com.wit.payment.domain.pay.entity.Payment;
 import com.wit.payment.domain.pay.entity.PaymentIssue;
 import com.wit.payment.domain.pay.exception.PaymentErrorCode;
@@ -17,13 +26,9 @@ import com.wit.payment.domain.product.repository.ProductRepository;
 import com.wit.payment.global.exception.CustomException;
 import com.wit.payment.global.tl3800.TL3800Gateway;
 import com.wit.payment.global.tl3800.proto.TLPacket;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -79,7 +84,8 @@ public class PayService {
       // 3. 응답 코드 기준 성공/실패 분기
       if (respCode == 0) {
 
-        Payment payment = paymentMapper.toPayment(resp, (int) serverTotal, request.inst());
+        Payment payment =
+            paymentMapper.toPayment(resp, serverTotal, request.inst(), request.delivery());
         Payment saved = paymentRepository.save(payment);
 
         log.info("[PAY] 결제 성공 - paymentId={}, approvalNo={}", saved.getId(), saved.getApprovalNo());
@@ -120,9 +126,26 @@ public class PayService {
     }
   }
 
-  /**
-   * 요청된 상품/수량을 기준으로 총 결제 금액 계산 및 검증
-   */
+  /** [조회] 결제 내역 전체 */
+  public List<PaymentSummaryResponse> getAllPayments() {
+    List<Payment> payments = paymentRepository.findAllByOrderByApprovedDateDescApprovedTimeDesc();
+
+    log.info("[PAY] 결제 내역 전체 조회 - count={}", payments.size());
+
+    return paymentMapper.toPaymentResponseList(payments);
+  }
+
+  /** [조회] 결제 이슈 내역 전체 */
+  public List<PaymentIssueResponse> getAllPaymentIssues() {
+    List<PaymentIssue> issues =
+        paymentIssueRepository.findAllByOrderByOccurredDateDescOccurredTimeDesc();
+
+    log.info("[PAY] 결제 이슈 내역 전체 조회 - count={}", issues.size());
+
+    return paymentMapper.toIssueResponseList(issues);
+  }
+
+  /** 요청된 상품/수량을 기준으로 총 결제 금액 계산 및 검증 */
   private long calculateTotalAmount(List<PayItemRequest> items) {
     if (items == null || items.isEmpty()) {
       log.warn("[PAY] 빈 상품 목록으로 결제 요청");
@@ -170,9 +193,7 @@ public class PayService {
     return total;
   }
 
-  /**
-   * 서버 계산 금액과 프론트에서 전달한 totalAmount 비교
-   */
+  /** 서버 계산 금액과 프론트에서 전달한 totalAmount 비교 */
   private boolean serverTotalEqualsRequest(long serverTotal, Long requestTotal) {
     if (requestTotal == null) {
       return false;
