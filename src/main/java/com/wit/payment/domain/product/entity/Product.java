@@ -102,4 +102,8 @@ public class Product extends BaseTimeEntity {
       kiosk.getKioskProducts().add(kp);
     }
   }
+
+  public boolean isOrderable() {
+    return status != null && status.isOrderable();
+  }
 }

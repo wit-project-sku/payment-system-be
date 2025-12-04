@@ -28,50 +28,6 @@ public class TL3800Client implements AutoCloseable {
   private static final int POS_JOB = POS_DT + 14; // 31
   private static final int POS_LEN = POS_JOB + 1 + 1; // 33
 
-  // ------- 내부 값 타입들 -------
-
-  /** TL 헤더: 잡코드, 데이터 길이, 원본 35바이트(raw)를 함께 보관 */
-  private record Header(JobCode jobCode, int dataLen, byte[] raw) {}
-
-  /** 프레임 공통 super-type */
-  private interface Frame {}
-
-  /** EVENT 프레임 (ACK/NAK 금지, tail만 소비) */
-  private static final class EventFrame implements Frame {
-
-    private final Header header;
-
-    private EventFrame(Header header) {
-      this.header = header;
-    }
-
-    public Header header() {
-      return header;
-    }
-  }
-
-  /** 일반 응답 프레임 (TLPacket로 파싱 완료된 프레임) */
-  private static final class NormalFrame implements Frame {
-
-    private final Header header;
-    private final TLPacket packet;
-
-    private NormalFrame(Header header, TLPacket packet) {
-      this.header = header;
-      this.packet = packet;
-    }
-
-    public Header header() {
-      return header;
-    }
-
-    public TLPacket packet() {
-      return packet;
-    }
-  }
-
-  // ------- ctor / lifecycle -------
-
   public TL3800Client(TLTransport transport, int ackWaitMs, int respWaitMs, int maxAckRetry) {
     this.t = transport;
     this.ackWaitMs = ackWaitMs;
@@ -91,8 +47,6 @@ public class TL3800Client implements AutoCloseable {
     }
   }
 
-  // ------- public API -------
-
   public TLPacket requestResponse(TLPacket req) throws Exception {
     final byte[] frame = req.toBytes();
     log.info("[TL3800] >> SEND job={} len={} HEX={}", req.jobCode, frame.length, hex(frame));
@@ -102,14 +56,10 @@ public class TL3800Client implements AutoCloseable {
 
     int tries = 0;
     while (true) {
-      // 혹시 이전 쓰레기 바이트가 남아있다면 정리
       drainRx(120);
-
-      // 요청 프레임 송신
       t.write(frame);
       sleepQuiet(8);
 
-      // 1차: ACK / NAK / 즉시 STX를 짧게 대기
       Integer first = waitAckNakStx(ackWaitMs);
       if (first != null) {
         if (first == 0x15) { // NAK
@@ -119,41 +69,52 @@ public class TL3800Client implements AutoCloseable {
           }
           throw new IllegalStateException("NAK received (exceeded retry)");
         }
-
-        if (first == 0x06 || first == 0x02) { // ACK 또는 즉시 STX
-          if (first == 0x06) {
-            log.debug("[TL3800] << ACK");
-          } else {
-            log.debug("[TL3800] << STX (immediate)");
+        if (first == 0x06) { // ACK
+          log.debug("[TL3800] << ACK");
+          byte[] header = readHeaderFromStx(); // 통일
+          TLPacket p = readOrFollowUpIfEvent(header, expectedFinal, req);
+          if (p != null) {
+            return p;
           }
-          return handleInitialResponse(expectedFinal, req);
+          return waitResendAndReturnExpected(expectedFinal);
+        }
+        if (first == 0x02) { // 즉시 STX
+          log.debug("[TL3800] << STX (immediate)");
+          byte[] header = readHeaderFromStx(); // 통일
+          TLPacket p = readOrFollowUpIfEvent(header, expectedFinal, req);
+          if (p != null) {
+            return p;
+          }
+          return waitResendAndReturnExpected(expectedFinal);
         }
       }
 
-      // 2차 폴백: ACK가 없으면 STX/ACK/NAK 를 추가로 대기
-      log.debug(
-          "[TL3800] no-ACK within {} ms → waiting STX/ACK/NAK up to {} ms", ackWaitMs, respWaitMs);
+      // 폴백: ACK가 없으면 STX 추가 대기
+      log.debug("[TL3800] no-ACK within {} ms → waiting STX up to {} ms", ackWaitMs, respWaitMs);
       long start = System.currentTimeMillis();
       while ((System.currentTimeMillis() - start) < respWaitMs) {
         int b = t.readByte(50);
-        if (b == 0x02 || b == 0x06) {
-          if (b == 0x06) {
-            log.debug("[TL3800] << late ACK");
-          } else {
-            log.debug("[TL3800] << late STX (immediate)");
+        if (b == 0x02) {
+          byte[] header = readHeaderFromStx(); // 통일
+          TLPacket p = readOrFollowUpIfEvent(header, expectedFinal, req);
+          if (p != null) {
+            return p;
           }
-          return handleInitialResponse(expectedFinal, req);
+          return waitResendAndReturnExpected(expectedFinal);
         } else if (b == 0x15) {
           if (++tries <= maxAckRetry) {
             log.warn("[TL3800] << late NAK → retry {}/{}", tries, maxAckRetry);
             break;
           }
           throw new IllegalStateException("NAK received (exceeded retry)");
-        } else if (b < 0) {
-          // timeout step
-          continue;
-        } else {
-          log.debug("[TL3800] << skip 0x{}", String.format("%02X", b));
+        } else if (b == 0x06) {
+          log.debug("[TL3800] << late ACK");
+          byte[] header = readHeaderFromStx(); // 통일
+          TLPacket p = readOrFollowUpIfEvent(header, expectedFinal, req);
+          if (p != null) {
+            return p;
+          }
+          return waitResendAndReturnExpected(expectedFinal);
         }
       }
 
@@ -161,65 +122,175 @@ public class TL3800Client implements AutoCloseable {
     }
   }
 
-  // ------- high-level 응답 처리 -------
+  /** ACK/즉시-STX/late-ACK 모두 여기로 통일: STX를 잡으면 단순히 34바이트를 더 읽어서 헤더로 사용 */
+  private byte[] readHeaderFromStx() throws Exception {
+    long deadline = System.currentTimeMillis() + respWaitMs;
+
+    while (System.currentTimeMillis() < deadline) {
+      int b = t.readByte(Math.min(50, respWaitMs));
+      if (b < 0) {
+        continue;
+      }
+      if (b != 0x02) {
+        log.debug("[TL3800] << skip 0x{}", String.format("%02X", b));
+        continue;
+      }
+
+      // STX 하나를 찾았으면, 그 뒤 34바이트를 그대로 읽어서 헤더를 만든다.
+      byte[] header = readHeaderFromStxSimple();
+      log.debug("[TL3800] simple header built HEX={}", hex(header));
+      return header;
+    }
+
+    throw new IllegalStateException("STX not received after ACK");
+  }
+
+  /** STX 이후 34바이트를 그대로 읽어서 35바이트 헤더를 구성하는 단순 버전 (sanity / sliding 없음) */
+  private byte[] readHeaderFromStxSimple() throws Exception {
+    final int restLen = HEADER_BYTES - 1; // 34
+    byte[] rest = new byte[restLen];
+
+    int n = t.readFully(rest, restLen, respWaitMs);
+    if (n != restLen) {
+      log.warn("[TL3800] simple header short: got={} need={}", n, restLen);
+      throw new IllegalStateException("short header after STX");
+    }
+
+    byte[] header = new byte[HEADER_BYTES];
+    header[0] = 0x02;
+    System.arraycopy(rest, 0, header, 1, restLen);
+
+    return header;
+  }
+
+  /** 헤더 sanity 검사: 날짜 14자리 숫자/잡코드 유효/데이터 길이 상한 */
+  private boolean isSaneHeader(byte[] h) {
+    // 1) 날짜 14자리 숫자만
+    for (int i = POS_DT; i < POS_DT + 14; i++) {
+      int v = h[i] & 0xFF;
+      if (v < 0x30 || v > 0x39) {
+        return false;
+      }
+    }
+    // 2) 잡코드 유효성 (JobCode.of로 검증)
+    int job = h[POS_JOB] & 0xFF;
+    if (!isKnownJob(job)) {
+      return false;
+    }
+    // 3) 데이터 길이 합리성
+    int dataLen = (h[POS_LEN] & 0xFF) | ((h[POS_LEN + 1] & 0xFF) << 8);
+    return dataLen >= 0 && dataLen <= 4096;
+  }
+
+  private boolean isKnownJob(int job) {
+    try {
+      JobCode.of((byte) job);
+      return false == false ? true : false; // keep it simple: true when no exception
+    } catch (IllegalArgumentException e) {
+      return false;
+    }
+  }
+
+  private JobCode jobFromHeader(byte[] header) {
+    return JobCode.of(header[POS_JOB]);
+  }
+
+  private int dataLenFromHeader(byte[] header) {
+    return (header[POS_LEN] & 0xFF) | ((header[POS_LEN + 1] & 0xFF) << 8);
+  }
+
+  /** EVENT 프레임의 tail(데이터+ETX+BCC)을 읽고 버린다. EVENT는 ACK/NACK 미전송. */
+  private void consumeEventFrame(byte[] header) throws Exception {
+    int dataLen = dataLenFromHeader(header);
+    int tailLen = dataLen + 2; // ETX + BCC (값은 검증하지 않음)
+
+    byte[] tail = new byte[tailLen];
+    int m = t.readFully(tail, tailLen, respWaitMs);
+
+    log.info("[TL3800] << RECV(EVENT) dataLen={} readTail={}", dataLen, m);
+    // EVENT 는 ACK/NACK 금지
+  }
 
   /**
-   * ACK(또는 즉시 STX) 이후의 "첫 프레임"을 읽어 처리한다. 첫 프레임이 EVENT이면 후속 프레임을 기다리고, 일반 프레임이면 expectedFinal에 맞는지
-   * 확인 후 필요 시 FOLLOWUP_WINDOW 동안 추가 프레임을 받는다.
+   * 헤더를 읽은 뒤 프레임 파싱을 시도. 첫 프레임이 EVENT면 내용을 읽고 버린 뒤 후속 프레임을 기다리고, 비-EVENT는 TLPacket으로 파싱. 파싱 실패
+   * 시(NACK 전송됨) null을 반환해 상위에서 재전송을 받게 함.
    */
-  private TLPacket handleInitialResponse(JobCode expectedFinal, TLPacket req) throws Exception {
-    Frame frame = readFrame(respWaitMs, req);
+  private TLPacket readOrFollowUpIfEvent(byte[] header, JobCode expectedFinal, TLPacket req)
+      throws Exception {
 
-    if (frame instanceof EventFrame ef) {
+    JobCode job = jobFromHeader(header);
+
+    // 1) 헤더 상 jobCode 자체가 EVENT 인 경우: tail을 읽고 버리고 후속 프레임 대기
+    if (job == JobCode.EVENT) {
+      consumeEventFrame(header);
       log.warn(
-          "[TL3800] EVENT frame received; waiting next non-EVENT frame (expect={})", expectedFinal);
+          "[TL3800] EVENT header received; waiting next non-EVENT frame (expect={})",
+          expectedFinal);
       return waitFollowUp(expectedFinal);
     }
 
-    NormalFrame nf = (NormalFrame) frame;
-    TLPacket first = nf.packet();
-
-    if (matchesExpected(expectedFinal, first.jobCode)) {
-      return first;
+    // 2) 나머지 잡코드는 기존 로직 유지
+    TLPacket first;
+    try {
+      first = readTailParseAndAck(header, req); // 성공 시 단말에 ACK 전송됨
+    } catch (IllegalArgumentException ex) {
+      // readTailParseAndAck 내부에서 NAK 전송 완료. 재수신 대기 지시.
+      log.warn("[TL3800] first frame parse failed → waiting for resend: {}", ex.getMessage());
+      return null;
     }
 
-    log.warn(
-        "[TL3800] unexpected first job={} (expect={}) — entering follow-up wait",
-        first.jobCode,
-        expectedFinal);
-    return waitFollowUp(expectedFinal);
+    if (first.jobCode == JobCode.EVENT) {
+      log.warn("[TL3800] EVENT received; waiting next non-EVENT frame (expect={})", expectedFinal);
+      return waitFollowUp(expectedFinal);
+    }
+    return first;
   }
 
-  /** FOLLOWUP_WINDOW 동안 다음 프레임들을 계속 수신(매번 ACK)하여 expected 잡코드가 오면 반환. EVENT 프레임은 tail만 소비하고 무시. */
+  /** 파싱 실패 후 재전송을 받아 기대 잡코드가 올 때까지 대기 */
+  private TLPacket waitResendAndReturnExpected(JobCode expected) throws Exception {
+    long deadline = System.currentTimeMillis() + respWaitMs;
+    while (System.currentTimeMillis() < deadline) {
+      try {
+        TLPacket pkt = readNextFrameAndAck(respWaitMs);
+        if (pkt.jobCode == JobCode.EVENT) {
+          return waitFollowUp(expected);
+        }
+        if (matchesExpected(expected, pkt.jobCode)) {
+          return pkt;
+        }
+        log.warn("[TL3800] unexpected job on resend: {} (expect {})", pkt.jobCode, expected);
+      } catch (IllegalArgumentException ex) {
+        log.warn("[TL3800] resend parse failed: {}", ex.getMessage());
+      }
+    }
+    throw new IllegalStateException("Resend timeout after parse failure");
+  }
+
+  /** FOLLOWUP_WINDOW 동안 다음 프레임들을 계속 수신(매번 ACK)하여 expected 잡코드가 오면 반환 */
   private TLPacket waitFollowUp(JobCode expected) throws Exception {
     long deadline = System.currentTimeMillis() + FOLLOWUP_WINDOW_MS;
 
-    while (System.currentTimeMillis() < deadline) {
+    while (true) {
       long remaining = deadline - System.currentTimeMillis();
       if (remaining <= 0) {
         break;
       }
 
-      int perTry = (int) Math.min(respWaitMs, remaining);
-
       try {
-        Frame frame = readFrame(perTry, null);
+        int perTry = (int) Math.min(respWaitMs, remaining);
+        TLPacket next = readNextFrameAndAck(perTry);
 
-        if (frame instanceof EventFrame) {
-          // EVENT 는 consumeEventFrame 에서 이미 로그 처리됨
-          log.info("[TL3800] << RECV(seq) job=EVENT (ignored)");
+        log.info("[TL3800] << RECV(seq) job={} dataLen={}", next.jobCode, next.data.length);
+
+        if (next.jobCode == JobCode.EVENT) {
+          // readNextFrameAndAck 안에서 이미 consumeEventFrame 처리
           continue;
         }
-
-        NormalFrame nf = (NormalFrame) frame;
-        TLPacket pkt = nf.packet();
-        log.info("[TL3800] << RECV(seq) job={} dataLen={}", pkt.jobCode, pkt.data.length);
-
-        if (matchesExpected(expected, pkt.jobCode)) {
-          return pkt;
+        if (matchesExpected(expected, next.jobCode)) {
+          return next;
         }
 
-        log.warn("[TL3800] unexpected job={} (expect={}) — keep waiting", pkt.jobCode, expected);
+        log.warn("[TL3800] unexpected job={} (expect={}) — keep waiting", next.jobCode, expected);
       } catch (IllegalArgumentException e) {
         log.warn("[TL3800] follow-up parse failed: {}", e.getMessage());
       } catch (IllegalStateException e) {
@@ -231,86 +302,48 @@ public class TL3800Client implements AutoCloseable {
         "Follow-up window exceeded (" + FOLLOWUP_WINDOW_MS + " ms) without final " + expected);
   }
 
-  // ------- frame 단위 primitive -------
-
-  /**
-   * STX를 기다렸다가 헤더를 읽고, EVENT면 tail을 읽어 버린 뒤 EventFrame 반환, NORMAL이면 tail을 읽어 strict/lenient 파싱 후
-   * NormalFrame 반환.
-   */
-  private Frame readFrame(int waitMs, TLPacket req) throws Exception {
-    Header header = readHeaderWithin(waitMs);
-
-    if (header.jobCode() == JobCode.EVENT) {
-      consumeEventFrame(header);
-      return new EventFrame(header);
-    }
-
-    TLPacket pkt = readTailAndParse(header, req);
-    return new NormalFrame(header, pkt);
-  }
-
-  /** STX를 대기하면서 헤더(35B)를 읽어 Header 객체로 만든다. 슬라이딩/추가 sanity 없이 "단순하게" 한 프레임 기준으로만 읽는다. */
-  private Header readHeaderWithin(int waitMs) throws Exception {
+  /** 다음 STX부터 한 프레임을 읽어 검증 후 ACK 회신. EVENT는 tail만 읽고 버리고 계속 대기, 비-EVENT는 파싱. */
+  private TLPacket readNextFrameAndAck(int waitMs) throws Exception {
     long deadline = System.currentTimeMillis() + waitMs;
-
     while (System.currentTimeMillis() < deadline) {
       int b = t.readByte(Math.min(50, waitMs));
       if (b < 0) {
         continue;
       }
-      if (b != 0x02) {
-        log.debug("[TL3800] << skip 0x{}", String.format("%02X", b));
-        continue;
+      if (b == 0x02) {
+        byte[] header = composeHeaderAfterStxWithSliding();
+        if (header == null) {
+          log.warn("[TL3800] follow-up header build failed → resync");
+          continue;
+        }
+        if (!isSaneHeader(header)) {
+          log.warn("[TL3800] follow-up header sanity failed → resync (hex={})", hex(header));
+          continue;
+        }
+
+        JobCode job = jobFromHeader(header);
+        if (job == JobCode.EVENT) {
+          consumeEventFrame(header);
+          log.info("[TL3800] << RECV(seq) job=EVENT (ignored)");
+          // EVENT는 응답이 아니므로 계속 다음 프레임 대기
+          continue;
+        }
+
+        return readTailParseAndAck(header, null);
       }
-
-      // STX 이후 34바이트를 그대로 읽어서 헤더를 구성
-      final int restLen = HEADER_BYTES - 1; // 34
-      byte[] rest = new byte[restLen];
-      int n = t.readFully(rest, restLen, respWaitMs);
-      if (n != restLen) {
-        log.warn("[TL3800] simple header short: got={} need={}", n, restLen);
-        throw new IllegalStateException("short header after STX");
-      }
-
-      byte[] raw = new byte[HEADER_BYTES];
-      raw[0] = 0x02;
-      System.arraycopy(rest, 0, raw, 1, restLen);
-
-      JobCode job = JobCode.of(raw[POS_JOB]);
-      int dataLen = (raw[POS_LEN] & 0xFF) | ((raw[POS_LEN + 1] & 0xFF) << 8);
-
-      log.debug("[TL3800] header built job={} dataLen={} HEX={}", job, dataLen, hex(raw));
-      return new Header(job, dataLen, raw);
+      log.debug("[TL3800] << skip 0x{}", String.format("%02X", b));
     }
-
-    throw new IllegalStateException("Frame header timeout");
+    throw new IllegalStateException("Follow-up frame timeout");
   }
 
-  /** EVENT 프레임의 tail(데이터+ETX+BCC)을 읽고 버린다. EVENT는 ACK/NACK 미전송. */
-  private void consumeEventFrame(Header header) throws Exception {
-    int dataLen = header.dataLen();
-    int tailLen = dataLen + 2; // ETX + BCC
-
-    byte[] tail = new byte[tailLen];
-    int m = t.readFully(tail, tailLen, respWaitMs);
-
-    log.info("[TL3800] << RECV(EVENT) dataLen={} readTail={}", dataLen, m);
-    // EVENT 는 ACK/NACK 금지
-  }
-
-  /**
-   * 꼬리(데이터+ETX+BCC) 수신 → strict/lenient 파싱 → (항상 ACK) strict 실패 시에도 lenient로 살려보고, 두 경우 모두 단말에는
-   * ACK를 보낸다.
-   */
-  private TLPacket readTailAndParse(Header header, TLPacket req) throws Exception {
-    int dataLen = header.dataLen();
+  /** 꼬리(데이터+ETX+BCC) 수신 → 파싱 → (성공시 ACK / 실패시 NAK 회신 후 예외) */
+  private TLPacket readTailParseAndAck(byte[] header, TLPacket req) throws Exception {
+    int dataLen = dataLenFromHeader(header);
     int tailLen = dataLen + 2; // ETX + BCC
 
     byte[] tail = new byte[tailLen];
     int m = t.readFully(tail, tailLen, respWaitMs);
     if (m != tailLen) {
-      // body 부족: 예전에는 NAK 후 재전송을 유도했지만,
-      // 현재는 strict/lenient 파서 위주의 동작을 유지하기 위해 그대로 예외만 던진다.
       try {
         t.write(new byte[] {0x15});
       } catch (Exception ignore) {
@@ -320,7 +353,7 @@ public class TL3800Client implements AutoCloseable {
     }
 
     byte[] resp = new byte[HEADER_BYTES + tailLen];
-    System.arraycopy(header.raw(), 0, resp, 0, HEADER_BYTES);
+    System.arraycopy(header, 0, resp, 0, HEADER_BYTES);
     System.arraycopy(tail, 0, resp, HEADER_BYTES, tailLen);
     log.info("[TL3800] << RECV len={} HEX={}", resp.length, hex(resp));
 
@@ -350,8 +383,6 @@ public class TL3800Client implements AutoCloseable {
       return pkt;
     }
   }
-
-  // ------- 공통 유틸 -------
 
   private Integer waitAckNakStx(int waitMs) {
     long end = System.currentTimeMillis() + waitMs;
@@ -394,6 +425,64 @@ public class TL3800Client implements AutoCloseable {
 
   private static String hex(byte[] b) {
     return java.util.HexFormat.of().formatHex(b);
+  }
+
+  /** 과거 유연 읽기 메서드는 STX 기반으로 통일 */
+  private byte[] readHeaderAfterAckFlexible() throws Exception {
+    return readHeaderFromStx();
+  }
+
+  /** STX 직후 34B를 읽고, 내부에 다시 STX가 있으면 '마지막 STX'로 슬라이딩해 정상 35B 헤더를 재구성 */
+  private byte[] composeHeaderAfterStxWithSliding() throws Exception {
+    final int REST = HEADER_BYTES - 1; // 34
+    byte[] rest = new byte[REST];
+    int n = t.readFully(rest, REST, respWaitMs);
+    if (n != REST) {
+      // partial → 상위에서 재시도
+      return null;
+    }
+
+    // 시도 #0: [STX] + rest
+    byte[] header = new byte[HEADER_BYTES];
+    header[0] = 0x02;
+    System.arraycopy(rest, 0, header, 1, REST);
+    if (isSaneHeader(header)) {
+      return header;
+    }
+
+    // 시도 #1: rest 내부 '마지막 STX'로 슬라이딩
+    int idx = lastIndexOf(rest, (byte) 0x02);
+    if (idx >= 0 && idx < REST - 1) {
+      byte[] header2 = new byte[HEADER_BYTES];
+      header2[0] = 0x02;
+      int copy = Math.min(REST - (idx + 1), HEADER_BYTES - 1);
+      System.arraycopy(rest, idx + 1, header2, 1, copy);
+      int missing = (HEADER_BYTES - 1) - copy;
+      if (missing > 0) {
+        byte[] more = new byte[missing];
+        int m = t.readFully(more, missing, respWaitMs);
+        if (m != missing) {
+          return null; // partial → 상위 재시도
+        }
+        System.arraycopy(more, 0, header2, 1 + copy, missing);
+      }
+      if (isSaneHeader(header2)) {
+        return header2;
+      }
+    }
+
+    // 추가로 더 깊은 중첩(STX가 연쇄로 여러 번)까지 케어하려면 여기서 루프화 가능
+    return null;
+  }
+
+  /** 배열 내 '마지막' 바이트 값의 인덱스(없으면 -1) */
+  private static int lastIndexOf(byte[] arr, byte v) {
+    for (int i = arr.length - 1; i >= 0; i--) {
+      if (arr[i] == v) {
+        return i;
+      }
+    }
+    return -1;
   }
 
   /** 요청 잡코드에 대응하는 "기대 응답" 잡코드. 기본은 같은 코드, A→a, B→b 식으로 매핑 */
