@@ -51,6 +51,10 @@ public class PaymentIssue {
   @Column(name = "message", length = 1000, nullable = false)
   private String message;
 
+  /** 고객 전화번호 */
+  @Column(name = "phone_number", length = 20, nullable = false)
+  private String phoneNumber;
+
   /** 처리상태 – 미처리(기본), 처리중, 처리완료 */
   @Enumerated(EnumType.STRING)
   @Column(name = "status", length = 20, nullable = false)

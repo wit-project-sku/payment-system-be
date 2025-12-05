@@ -21,12 +21,17 @@ import com.wit.payment.global.tl3800.proto.TLPacket;
 @Component
 public class PaymentMapper {
 
-  // TLPacket.dateTime14 포맷
   private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
   private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HHmmss");
 
-  /** TL 승인 응답 + 금액/할부 정보 → Payment 엔티티 변환 */
-  public Payment toPayment(TLPacket packet, long amount, String inst, boolean delivery) {
+  /** TL 승인 응답 + 금액/할부/배송/전화번호/이미지 → Payment 엔티티 변환 */
+  public Payment toPayment(
+      TLPacket packet,
+      long amount,
+      String inst,
+      boolean delivery,
+      String phoneNumber,
+      String imageUrl) {
 
     LocalDate approvedDate = parseDate(packet.dateTime14);
     LocalTime approvedTime = parseTime(packet.dateTime14);
@@ -41,23 +46,24 @@ public class PaymentMapper {
         .approvalNo(approvalNo)
         .amount((int) amount)
         .installment(inst)
+        .phoneNumber(phoneNumber)
         .deliveryAddress(delivery ? "" : null)
-        .etc(delivery ? "" : null)
+        .imageUrl(imageUrl)
         .build();
   }
 
-  /** 장애/예외 상황 → PaymentIssue 엔티티 변환 */
-  public PaymentIssue toIssue(long amount, String message) {
+  /** 장애/예외 상황 → PaymentIssue 엔티티 변환 (전화번호 포함) */
+  public PaymentIssue toIssue(long amount, String message, String phoneNumber) {
     return PaymentIssue.builder()
         .occurredDate(LocalDate.now())
         .occurredTime(LocalTime.now())
         .amount((int) amount)
+        .phoneNumber(phoneNumber)
         .message(message)
         .status(PaymentIssueStatus.UNRESOLVED)
         .build();
   }
 
-  /** Payment -> Response DTO 변환 */
   public PaymentSummaryResponse toPaymentResponse(Payment payment) {
     return PaymentSummaryResponse.builder()
         .paymentId(payment.getId())
@@ -68,11 +74,9 @@ public class PaymentMapper {
         .installment(payment.getInstallment())
         .phoneNumber(payment.getPhoneNumber())
         .deliveryAddress(payment.getDeliveryAddress())
-        .etc(payment.getEtc())
         .build();
   }
 
-  /** PaymentIssue -> Response DTO 변환 */
   public PaymentIssueResponse toIssueResponse(PaymentIssue issue) {
     return PaymentIssueResponse.builder()
         .paymentIssueId(issue.getId())
@@ -84,7 +88,6 @@ public class PaymentMapper {
         .build();
   }
 
-  /** 리스트 변환용 매핑 */
   public List<PaymentSummaryResponse> toPaymentResponseList(List<Payment> payments) {
     if (payments == null) {
       return List.of();
@@ -99,12 +102,11 @@ public class PaymentMapper {
     return issues.stream().map(this::toIssueResponse).toList();
   }
 
-  /** TL 프로토콜 승인번호 추출 (offset 기준) */
   private String extractApprovalNoRaw(byte[] data) {
     if (data == null || data.length < 60) {
       return "";
     }
-    final int offset = 20 + 10 + 8 + 8 + 2; // 48
+    final int offset = 20 + 10 + 8 + 8 + 2;
     return new String(data, offset, 12, StandardCharsets.US_ASCII);
   }
 

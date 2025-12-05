@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.wit.payment.domain.pay.dto.request.PayItemRequest;
+import com.wit.payment.domain.pay.dto.request.CartItemRequest;
 import com.wit.payment.domain.pay.dto.request.PayRequest;
 import com.wit.payment.domain.pay.dto.response.PayResponse;
 import com.wit.payment.domain.pay.dto.response.PaymentIssueResponse;
@@ -85,7 +85,13 @@ public class PayService {
       if (respCode == 0) {
 
         Payment payment =
-            paymentMapper.toPayment(resp, serverTotal, request.inst(), request.delivery());
+            paymentMapper.toPayment(
+                resp,
+                serverTotal,
+                request.inst(),
+                request.delivery(),
+                request.phoneNumber(),
+                request.imageUrl());
         Payment saved = paymentRepository.save(payment);
 
         log.info("[PAY] 결제 성공 - paymentId={}, approvalNo={}", saved.getId(), saved.getApprovalNo());
@@ -95,7 +101,8 @@ public class PayService {
 
       // responseCode != 0 → 단말 거절
       String issueMessage = "[단말 거절] 응답코드=" + respCode;
-      PaymentIssue issue = paymentMapper.toIssue((int) serverTotal, issueMessage);
+      PaymentIssue issue =
+          paymentMapper.toIssue((int) serverTotal, issueMessage, request.phoneNumber());
       PaymentIssue savedIssue = paymentIssueRepository.save(issue);
 
       log.warn("[PAY] 단말 거절 - issueId={}, respCode={}", savedIssue.getId(), respCode);
@@ -114,7 +121,7 @@ public class PayService {
       // serverTotal 이 int 범위 넘는다면 여기서도 방어
       int issueAmount = (serverTotal > Integer.MAX_VALUE) ? Integer.MAX_VALUE : (int) serverTotal;
 
-      PaymentIssue issue = paymentMapper.toIssue(issueAmount, issueMessage);
+      PaymentIssue issue = paymentMapper.toIssue(issueAmount, issueMessage, request.phoneNumber());
       PaymentIssue savedIssue = paymentIssueRepository.save(issue);
 
       log.warn(
@@ -146,14 +153,14 @@ public class PayService {
   }
 
   /** 요청된 상품/수량을 기준으로 총 결제 금액 계산 및 검증 */
-  private long calculateTotalAmount(List<PayItemRequest> items) {
+  private long calculateTotalAmount(List<CartItemRequest> items) {
     if (items == null || items.isEmpty()) {
       log.warn("[PAY] 빈 상품 목록으로 결제 요청");
       throw new CustomException(PaymentErrorCode.EMPTY_ITEMS);
     }
 
     // 1) 상품 ID 목록
-    List<Long> productIds = items.stream().map(PayItemRequest::productId).distinct().toList();
+    List<Long> productIds = items.stream().map(CartItemRequest::productId).distinct().toList();
 
     // 2) 상품 조회
     List<Product> products = productRepository.findByIdIn(productIds);
@@ -168,7 +175,7 @@ public class PayService {
 
     // 4) 각 상품 상태/가격 검증 + 합산
     long total = 0L;
-    for (PayItemRequest item : items) {
+    for (CartItemRequest item : items) {
       Product p = productMap.get(item.productId());
 
       // 상품 상태 검증 (예: 판매중이 아닌 경우)

@@ -9,6 +9,6 @@ import jakarta.validation.constraints.NotNull;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "결제 요청 상품 항목")
-public record PayItemRequest(
+public record CartItemRequest(
     @Schema(description = "상품 ID", example = "101") @NotNull Long productId,
     @Schema(description = "상품 개수", example = "2") @Min(1) int quantity) {}
