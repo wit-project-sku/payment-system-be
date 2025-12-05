@@ -6,15 +6,20 @@ package com.wit.payment.domain.pay.dto.request;
 import java.util.List;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-@Schema(description = "결제 옵션 및 배송지 저장 요청 DTO")
+@Schema(description = "결제 옵션 + 배송 정보 저장 요청 DTO")
 public record PaymentOptionAndDeliveryRequest(
-    @Schema(description = "상품별 옵션(기종 등) 정보 목록", requiredMode = Schema.RequiredMode.REQUIRED) @Valid
-        List<PaymentItemOptionRequest> items,
     @Schema(
-            description = "배송지 정보 (현장 수령이면 null 로 보낼 수 있음)",
-            requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+            description = "고객 전화번호",
+            example = "01012345678",
+            requiredMode = Schema.RequiredMode.REQUIRED)
+        @NotBlank
+        String phoneNumber,
+    @Schema(description = "상품 옵션 목록(기종 등)", requiredMode = Schema.RequiredMode.NOT_REQUIRED) @Valid
+        List<PaymentItemOptionRequest> items,
+    @Schema(description = "배송 정보 (nullable)", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
         @Valid
         DeliverySaveRequest delivery) {}

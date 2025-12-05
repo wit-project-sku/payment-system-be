@@ -12,7 +12,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -76,18 +75,20 @@ public class PayController {
         .body(BaseResponse.success("결제 이슈 내역 조회가 완료되었습니다.", responses));
   }
 
-  @Operation(summary = "결제 옵션 + 배송 정보 저장", description = "결제 후 상품별 옵션(기종 등)과 배송 정보를 한 번에 저장합니다.")
-  @PostMapping("/{paymentId}/options-and-delivery")
+  @Operation(
+      summary = "결제 옵션 + 배송 정보 저장 API",
+      description = "결제 후 상품별 옵션(기종 등)과 배송 정보를 한 번에 저장합니다. " + "전화번호는 URL이 아닌 요청 바디로 전달합니다.")
+  @PostMapping("/options")
   public ResponseEntity<BaseResponse<Void>> saveOptionsAndDelivery(
-      @PathVariable Long paymentId, @Valid @RequestBody PaymentOptionAndDeliveryRequest request) {
+      @Valid @RequestBody PaymentOptionAndDeliveryRequest request) {
 
-    payService.saveOptionsAndDelivery(paymentId, request);
+    payService.saveOptionsAndDelivery(request);
 
     return ResponseEntity.ok(BaseResponse.success("결제 옵션 및 배송 정보 저장이 완료되었습니다.", null));
   }
 
   @Operation(summary = "전화번호 기준 구매 이력 조회 API", description = "전화번호로 고객의 결제 내역과 상품 목록을 조회합니다.")
-  @GetMapping("/by-phone")
+  @GetMapping("/phone")
   public ResponseEntity<BaseResponse<List<PaymentWithItemsResponse>>> getPaymentsByPhone(
       @RequestParam("phoneNumber") @NotBlank String phoneNumber) {
 

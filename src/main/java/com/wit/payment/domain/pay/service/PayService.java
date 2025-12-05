@@ -286,13 +286,17 @@ public class PayService {
    * <p>- delivery 정보가 존재하면 배송 엔티티 및 Payment.deliveryAddress 갱신
    */
   @Transactional
-  public void saveOptionsAndDelivery(Long paymentId, PaymentOptionAndDeliveryRequest request) {
+  public void saveOptionsAndDelivery(PaymentOptionAndDeliveryRequest request) {
+
+    // 1. 전화번호 기준 가장 최근 결제 조회
     Payment payment =
         paymentRepository
-            .findById(paymentId)
+            .findTopByPhoneNumberOrderByApprovedDateDescApprovedTimeDesc(request.phoneNumber())
             .orElseThrow(() -> new CustomException(PaymentErrorCode.PAYMENT_NOT_FOUND));
 
-    // 1. 옵션 저장: productId 기준으로 PaymentItem 찾고 optionText 변경
+    Long paymentId = payment.getId();
+
+    // 2. 옵션 저장
     if (request.items() != null && !request.items().isEmpty()) {
       Map<Long, PaymentItem> itemByProductId =
           payment.getItems().stream().collect(Collectors.toMap(PaymentItem::getProductId, i -> i));
@@ -312,7 +316,7 @@ public class PayService {
       }
     }
 
-    // 2. 배송 정보가 있는 경우에만 저장/수정
+    // 3. 배송 정보 저장/수정
     DeliverySaveRequest deliveryReq = request.delivery();
     if (deliveryReq != null) {
 
