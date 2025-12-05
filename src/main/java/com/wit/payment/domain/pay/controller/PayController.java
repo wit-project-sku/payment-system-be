@@ -33,7 +33,7 @@ import lombok.RequiredArgsConstructor;
 
 @Tag(name = "Pay", description = "상품 결제/이슈 관리 API")
 @RestController
-@RequestMapping(value = "/api/pay", produces = MediaType.APPLICATION_JSON_VALUE)
+@RequestMapping(value = "/api", produces = MediaType.APPLICATION_JSON_VALUE)
 @RequiredArgsConstructor
 public class PayController {
 
@@ -42,7 +42,7 @@ public class PayController {
   @Operation(
       summary = "장바구니 결제 요청 API",
       description = "상품 ID/수량/총 금액/할부 여부를 기반으로 단말 승인 요청 후 결제 생성 또는 이슈 기록을 수행합니다.")
-  @PostMapping
+  @PostMapping("/pay")
   public ResponseEntity<BaseResponse<PayResponse>> pay(@Valid @RequestBody PayRequest request) {
 
     PayResponse response = payService.pay(request);
@@ -55,7 +55,7 @@ public class PayController {
             BaseResponse.success(response.success() ? "결제가 완료되었습니다." : "결제 오류가 발생했습니다.", response));
   }
 
-  @GetMapping("/payments")
+  @GetMapping("/admin/payments")
   @Operation(summary = "결제 내역 전체 조회 API", description = "승인된 결제 내역을 최신순으로 전체 조회합니다.")
   public ResponseEntity<BaseResponse<List<PaymentSummaryResponse>>> getAllPayments() {
 
@@ -65,7 +65,7 @@ public class PayController {
         .body(BaseResponse.success("결제 내역 조회가 완료되었습니다.", responses));
   }
 
-  @GetMapping("/issues")
+  @GetMapping("/admin/issues")
   @Operation(summary = "결제 이슈 내역 전체 조회 API", description = "결제 실패/예외 이슈 내역을 최신순으로 전체 조회합니다.")
   public ResponseEntity<BaseResponse<List<PaymentIssueResponse>>> getAllPaymentIssues() {
 
@@ -78,7 +78,7 @@ public class PayController {
   @Operation(
       summary = "결제 옵션 + 배송 정보 저장 API",
       description = "결제 후 상품별 옵션(기종 등)과 배송 정보를 한 번에 저장합니다. " + "전화번호는 URL이 아닌 요청 바디로 전달합니다.")
-  @PostMapping("/options")
+  @PostMapping("/pay/options")
   public ResponseEntity<BaseResponse<Void>> saveOptionsAndDelivery(
       @Valid @RequestBody PaymentOptionAndDeliveryRequest request) {
 
@@ -88,7 +88,7 @@ public class PayController {
   }
 
   @Operation(summary = "전화번호 기준 구매 이력 조회 API", description = "전화번호로 고객의 결제 내역과 상품 목록을 조회합니다.")
-  @GetMapping("/phone")
+  @GetMapping("/pay/phone")
   public ResponseEntity<BaseResponse<List<PaymentWithItemsResponse>>> getPaymentsByPhone(
       @RequestParam("phoneNumber") @NotBlank String phoneNumber) {
 

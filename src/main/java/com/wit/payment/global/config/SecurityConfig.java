@@ -87,7 +87,12 @@ public class SecurityConfig {
                         "/api/categories/{category-id}/products",
                         "/api/categories",
                         "/api/categories/first",
-                        "/api/tl3800/*")
+                        "/api/tl3800/*",
+                        "/api/pay")
+                    .permitAll()
+
+                    // 웹용 API
+                    .requestMatchers("/api/pay/phone", "api/pay/options")
                     .permitAll()
                     .requestMatchers("/api/admin/**")
                     .hasRole("ADMIN")
