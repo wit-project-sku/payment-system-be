@@ -136,9 +136,18 @@ public class TL3800Client implements AutoCloseable {
         continue;
       }
 
-      // STX 하나를 찾았으면, 그 뒤 34바이트를 그대로 읽어서 헤더를 만든다.
-      byte[] header = readHeaderFromStxSimple();
-      log.debug("[TL3800] simple header built HEX={}", hex(header));
+      // 기존 simple 대신 sliding + sanity 체크 사용
+      byte[] header = composeHeaderAfterStxWithSliding();
+      if (header == null) {
+        log.warn("[TL3800] first header build failed → resync");
+        continue; // 다시 STX 검색
+      }
+      if (!isSaneHeader(header)) {
+        log.warn("[TL3800] first header sanity failed → resync (hex={})", hex(header));
+        continue; // 다시 STX 검색
+      }
+
+      log.debug("[TL3800] first header built HEX={}", hex(header));
       return header;
     }
 
@@ -218,9 +227,16 @@ public class TL3800Client implements AutoCloseable {
   private TLPacket readOrFollowUpIfEvent(byte[] header, JobCode expectedFinal, TLPacket req)
       throws Exception {
 
-    JobCode job = jobFromHeader(header);
+    JobCode job;
+    try {
+      job = jobFromHeader(header);
+    } catch (IllegalArgumentException ex) {
+      log.warn("[TL3800] invalid jobcode in header → waiting for resend: {}", ex.getMessage());
+      // 파싱 실패로 간주 → 상위(requestResponse)가 waitResendAndReturnExpected 호출
+      return null;
+    }
 
-    // 1) 헤더 상 jobCode 자체가 EVENT 인 경우: tail을 읽고 버리고 후속 프레임 대기
+    // 1) EVENT 헤더인 경우
     if (job == JobCode.EVENT) {
       consumeEventFrame(header);
       log.warn(
@@ -229,12 +245,11 @@ public class TL3800Client implements AutoCloseable {
       return waitFollowUp(expectedFinal);
     }
 
-    // 2) 나머지 잡코드는 기존 로직 유지
+    // 2) 정상 JobCode 인 경우 기존 로직 유지
     TLPacket first;
     try {
-      first = readTailParseAndAck(header, req); // 성공 시 단말에 ACK 전송됨
+      first = readTailParseAndAck(header, req);
     } catch (IllegalArgumentException ex) {
-      // readTailParseAndAck 내부에서 NAK 전송 완료. 재수신 대기 지시.
       log.warn("[TL3800] first frame parse failed → waiting for resend: {}", ex.getMessage());
       return null;
     }
@@ -425,11 +440,6 @@ public class TL3800Client implements AutoCloseable {
 
   private static String hex(byte[] b) {
     return java.util.HexFormat.of().formatHex(b);
-  }
-
-  /** 과거 유연 읽기 메서드는 STX 기반으로 통일 */
-  private byte[] readHeaderAfterAckFlexible() throws Exception {
-    return readHeaderFromStx();
   }
 
   /** STX 직후 34B를 읽고, 내부에 다시 STX가 있으면 '마지막 STX'로 슬라이딩해 정상 35B 헤더를 재구성 */

@@ -47,6 +47,7 @@ public class PayService {
   private final PaymentRepository paymentRepository;
   private final PaymentDeliveryRepository paymentDeliveryRepository;
   private final PaymentIssueRepository paymentIssueRepository;
+  private final PaymentIssueService paymentIssueService;
   private final TL3800Gateway tl3800Gateway;
   private final PaymentMapper paymentMapper;
 
@@ -125,14 +126,13 @@ public class PayService {
     } catch (CustomException e) {
       throw e;
     } catch (Exception ex) {
-      // 4. 타임아웃 / 통신 예외 등
       log.error("[PAY] 단말/결제 처리 중 예외 발생", ex);
 
       String issueMessage = "[예외] " + ex.getClass().getSimpleName() + ": " + ex.getMessage();
       long safeAmount = Math.min(serverTotal, Integer.MAX_VALUE);
 
-      PaymentIssue issue = paymentMapper.toIssue(safeAmount, issueMessage, request.phoneNumber());
-      PaymentIssue savedIssue = paymentIssueRepository.save(issue);
+      PaymentIssue savedIssue =
+          paymentIssueService.saveIssue(safeAmount, issueMessage, request.phoneNumber());
 
       log.warn(
           "[PAY] 예외로 인해 PaymentIssue 생성 - issueId={}, message={}",
