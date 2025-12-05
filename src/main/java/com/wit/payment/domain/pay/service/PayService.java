@@ -11,14 +11,20 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.wit.payment.domain.pay.dto.request.CartItemRequest;
+import com.wit.payment.domain.pay.dto.request.DeliverySaveRequest;
 import com.wit.payment.domain.pay.dto.request.PayRequest;
+import com.wit.payment.domain.pay.dto.request.PaymentItemOptionRequest;
+import com.wit.payment.domain.pay.dto.request.PaymentOptionAndDeliveryRequest;
 import com.wit.payment.domain.pay.dto.response.PayResponse;
 import com.wit.payment.domain.pay.dto.response.PaymentIssueResponse;
 import com.wit.payment.domain.pay.dto.response.PaymentSummaryResponse;
 import com.wit.payment.domain.pay.entity.Payment;
+import com.wit.payment.domain.pay.entity.PaymentDelivery;
 import com.wit.payment.domain.pay.entity.PaymentIssue;
+import com.wit.payment.domain.pay.entity.PaymentItem;
 import com.wit.payment.domain.pay.exception.PaymentErrorCode;
 import com.wit.payment.domain.pay.mapper.PaymentMapper;
+import com.wit.payment.domain.pay.repository.PaymentDeliveryRepository;
 import com.wit.payment.domain.pay.repository.PaymentIssueRepository;
 import com.wit.payment.domain.pay.repository.PaymentRepository;
 import com.wit.payment.domain.product.entity.Product;
@@ -38,6 +44,7 @@ public class PayService {
 
   private final ProductRepository productRepository;
   private final PaymentRepository paymentRepository;
+  private final PaymentDeliveryRepository paymentDeliveryRepository;
   private final PaymentIssueRepository paymentIssueRepository;
   private final TL3800Gateway tl3800Gateway;
   private final PaymentMapper paymentMapper;
@@ -45,7 +52,7 @@ public class PayService {
   /**
    * 결제 요청 처리
    *
-   * <p>1) 상품/금액 검증 2) 단말 승인 요청 3) 승인 성공 시 Payment 저장 4) 거절/오류 시 PaymentIssue 저장
+   * <p>1) 상품/금액 검증 2) 단말 승인 요청 3) 승인 성공 시 Payment + PaymentItem 저장 4) 거절/오류 시 PaymentIssue 저장
    */
   @Transactional
   public PayResponse pay(PayRequest request) {
@@ -83,7 +90,7 @@ public class PayService {
 
       // 3. 응답 코드 기준 성공/실패 분기
       if (respCode == 0) {
-
+        // 3-1. 결제 엔티티 생성
         Payment payment =
             paymentMapper.toPayment(
                 resp,
@@ -92,6 +99,11 @@ public class PayService {
                 request.delivery(),
                 request.phoneNumber(),
                 request.imageUrl());
+
+        // 3-2. 상품별 PaymentItem 생성 (각 productId당 1개, 옵션은 나중에 별도 API로 설정)
+        populatePaymentItems(payment, request.items());
+
+        // 3-3. Payment + PaymentItem 저장 (cascade = ALL)
         Payment saved = paymentRepository.save(payment);
 
         log.info("[PAY] 결제 성공 - paymentId={}, approvalNo={}", saved.getId(), saved.getApprovalNo());
@@ -101,8 +113,7 @@ public class PayService {
 
       // responseCode != 0 → 단말 거절
       String issueMessage = "[단말 거절] 응답코드=" + respCode;
-      PaymentIssue issue =
-          paymentMapper.toIssue((int) serverTotal, issueMessage, request.phoneNumber());
+      PaymentIssue issue = paymentMapper.toIssue(serverTotal, issueMessage, request.phoneNumber());
       PaymentIssue savedIssue = paymentIssueRepository.save(issue);
 
       log.warn("[PAY] 단말 거절 - issueId={}, respCode={}", savedIssue.getId(), respCode);
@@ -113,15 +124,13 @@ public class PayService {
     } catch (CustomException e) {
       throw e;
     } catch (Exception ex) {
-
       // 4. 타임아웃 / 통신 예외 등
       log.error("[PAY] 단말/결제 처리 중 예외 발생", ex);
 
       String issueMessage = "[예외] " + ex.getClass().getSimpleName() + ": " + ex.getMessage();
-      // serverTotal 이 int 범위 넘는다면 여기서도 방어
-      int issueAmount = (serverTotal > Integer.MAX_VALUE) ? Integer.MAX_VALUE : (int) serverTotal;
+      long safeAmount = Math.min(serverTotal, Integer.MAX_VALUE);
 
-      PaymentIssue issue = paymentMapper.toIssue(issueAmount, issueMessage, request.phoneNumber());
+      PaymentIssue issue = paymentMapper.toIssue(safeAmount, issueMessage, request.phoneNumber());
       PaymentIssue savedIssue = paymentIssueRepository.save(issue);
 
       log.warn(
@@ -184,7 +193,7 @@ public class PayService {
         throw new CustomException(PaymentErrorCode.PRODUCT_STATUS_INVALID);
       }
 
-      long unitPrice = p.getPrice(); // price 타입에 맞게 조정 (int/long/BigDecimal 등)
+      long unitPrice = p.getPrice();
       long lineAmount = unitPrice * item.quantity();
       total += lineAmount;
 
@@ -200,11 +209,150 @@ public class PayService {
     return total;
   }
 
+  /** 결제 성공 시 PaymentItem 생성 (상품별 1개씩, 옵션은 이후 API로 설정) */
+  private void populatePaymentItems(Payment payment, List<CartItemRequest> items) {
+    if (items == null || items.isEmpty()) {
+      return;
+    }
+
+    List<Long> distinctProductIds =
+        items.stream().map(CartItemRequest::productId).distinct().toList();
+
+    for (Long productId : distinctProductIds) {
+      PaymentItem item = PaymentItem.builder().productId(productId).optionText(null).build();
+      payment.addItem(item);
+    }
+  }
+
+  /** 배송 정보 저장/수정 */
+  @Transactional
+  public void saveDelivery(Long paymentId, DeliverySaveRequest request) {
+    Payment payment =
+        paymentRepository
+            .findById(paymentId)
+            .orElseThrow(() -> new CustomException(PaymentErrorCode.PAYMENT_NOT_FOUND));
+
+    PaymentDelivery delivery =
+        paymentDeliveryRepository
+            .findByPayment(payment)
+            .map(
+                existing -> {
+                  existing.update(
+                      request.name(),
+                      request.zipCode(),
+                      request.address(),
+                      request.detailAddress());
+                  return existing;
+                })
+            .orElseGet(
+                () -> {
+                  PaymentDelivery newDelivery =
+                      PaymentDelivery.builder()
+                          .payment(payment)
+                          .name(request.name())
+                          .zipCode(request.zipCode())
+                          .address(request.address())
+                          .detailAddress(request.detailAddress())
+                          .build();
+                  payment.setDelivery(newDelivery);
+                  return newDelivery;
+                });
+
+    paymentDeliveryRepository.save(delivery);
+
+    log.info(
+        "[PAY] 배송 정보 저장 완료 - paymentId={}, recipient={}, zipCode={}",
+        paymentId,
+        request.name(),
+        request.zipCode());
+  }
+
   /** 서버 계산 금액과 프론트에서 전달한 totalAmount 비교 */
   private boolean serverTotalEqualsRequest(long serverTotal, Long requestTotal) {
     if (requestTotal == null) {
       return false;
     }
     return serverTotal == requestTotal;
+  }
+
+  /**
+   * 결제 상품 옵션(여러 개) + 배송지 정보를 한 번에 저장
+   *
+   * <p>- paymentId로 Payment 조회
+   *
+   * <p>- 요청에 포함된 각 productId에 대해 PaymentItem.optionText 갱신
+   *
+   * <p>- delivery 정보가 존재하면 배송 엔티티 및 Payment.deliveryAddress 갱신
+   */
+  @Transactional
+  public void saveOptionsAndDelivery(Long paymentId, PaymentOptionAndDeliveryRequest request) {
+    Payment payment =
+        paymentRepository
+            .findById(paymentId)
+            .orElseThrow(() -> new CustomException(PaymentErrorCode.PAYMENT_NOT_FOUND));
+
+    // 1. 옵션 저장: productId 기준으로 PaymentItem 찾고 optionText 변경
+    if (request.items() != null && !request.items().isEmpty()) {
+      Map<Long, PaymentItem> itemByProductId =
+          payment.getItems().stream().collect(Collectors.toMap(PaymentItem::getProductId, i -> i));
+
+      for (PaymentItemOptionRequest optionReq : request.items()) {
+        PaymentItem item = itemByProductId.get(optionReq.productId());
+        if (item == null) {
+          throw new CustomException(PaymentErrorCode.PAYMENT_ITEM_NOT_FOUND);
+        }
+        item.updateOptionText(optionReq.optionText());
+
+        log.info(
+            "[PAY] 결제 상품 옵션 저장 - paymentId={}, productId={}, option={}",
+            paymentId,
+            optionReq.productId(),
+            optionReq.optionText());
+      }
+    }
+
+    // 2. 배송 정보가 있는 경우에만 저장/수정
+    DeliverySaveRequest deliveryReq = request.delivery();
+    if (deliveryReq != null) {
+
+      PaymentDelivery delivery =
+          paymentDeliveryRepository
+              .findByPayment(payment)
+              .map(
+                  existing -> {
+                    existing.update(
+                        deliveryReq.name(),
+                        deliveryReq.zipCode(),
+                        deliveryReq.address(),
+                        deliveryReq.detailAddress());
+                    return existing;
+                  })
+              .orElseGet(
+                  () -> {
+                    PaymentDelivery newDelivery =
+                        PaymentDelivery.builder()
+                            .payment(payment)
+                            .name(deliveryReq.name())
+                            .zipCode(deliveryReq.zipCode())
+                            .address(deliveryReq.address())
+                            .detailAddress(deliveryReq.detailAddress())
+                            .build();
+                    payment.setDelivery(newDelivery);
+                    return newDelivery;
+                  });
+
+      paymentDeliveryRepository.save(delivery);
+
+      log.info(
+          "[PAY] 배송 정보 저장 완료 - paymentId={}, recipient={}, zipCode={}",
+          paymentId,
+          deliveryReq.name(),
+          deliveryReq.zipCode());
+    } else {
+      log.info(
+          "[PAY] 옵션만 저장 - paymentId={}, optionCount={}",
+          paymentId,
+          request.items() != null ? request.items().size() : 0);
+    }
   }
 }

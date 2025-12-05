@@ -34,4 +34,8 @@ public class PaymentItem {
 
   @Column(name = "option_text", length = 50)
   private String optionText;
+
+  public void updateOptionText(String optionText) {
+    this.optionText = optionText;
+  }
 }

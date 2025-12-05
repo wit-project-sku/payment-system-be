@@ -47,7 +47,6 @@ public class PaymentMapper {
         .amount((int) amount)
         .installment(inst)
         .phoneNumber(phoneNumber)
-        .deliveryAddress(delivery ? "" : null)
         .imageUrl(imageUrl)
         .build();
   }
@@ -73,7 +72,6 @@ public class PaymentMapper {
         .amount(payment.getAmount())
         .installment(payment.getInstallment())
         .phoneNumber(payment.getPhoneNumber())
-        .deliveryAddress(payment.getDeliveryAddress())
         .build();
   }
 
