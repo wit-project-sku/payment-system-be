@@ -6,6 +6,7 @@ package com.wit.payment.domain.pay.controller;
 import java.util.List;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.wit.payment.domain.pay.dto.request.PayRequest;
@@ -22,6 +24,7 @@ import com.wit.payment.domain.pay.dto.request.PaymentOptionAndDeliveryRequest;
 import com.wit.payment.domain.pay.dto.response.PayResponse;
 import com.wit.payment.domain.pay.dto.response.PaymentIssueResponse;
 import com.wit.payment.domain.pay.dto.response.PaymentSummaryResponse;
+import com.wit.payment.domain.pay.dto.response.PaymentWithItemsResponse;
 import com.wit.payment.domain.pay.service.PayService;
 import com.wit.payment.global.response.BaseResponse;
 
@@ -81,5 +84,15 @@ public class PayController {
     payService.saveOptionsAndDelivery(paymentId, request);
 
     return ResponseEntity.ok(BaseResponse.success("결제 옵션 및 배송 정보 저장이 완료되었습니다.", null));
+  }
+
+  @Operation(summary = "전화번호 기준 구매 이력 조회 API", description = "전화번호로 고객의 결제 내역과 상품 목록을 조회합니다.")
+  @GetMapping("/by-phone")
+  public ResponseEntity<BaseResponse<List<PaymentWithItemsResponse>>> getPaymentsByPhone(
+      @RequestParam("phoneNumber") @NotBlank String phoneNumber) {
+
+    List<PaymentWithItemsResponse> responses = payService.getPaymentsByPhone(phoneNumber);
+
+    return ResponseEntity.ok(BaseResponse.success("구매 내역 조회가 완료되었습니다.", responses));
   }
 }

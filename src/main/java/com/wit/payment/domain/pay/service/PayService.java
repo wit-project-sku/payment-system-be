@@ -18,6 +18,7 @@ import com.wit.payment.domain.pay.dto.request.PaymentOptionAndDeliveryRequest;
 import com.wit.payment.domain.pay.dto.response.PayResponse;
 import com.wit.payment.domain.pay.dto.response.PaymentIssueResponse;
 import com.wit.payment.domain.pay.dto.response.PaymentSummaryResponse;
+import com.wit.payment.domain.pay.dto.response.PaymentWithItemsResponse;
 import com.wit.payment.domain.pay.entity.Payment;
 import com.wit.payment.domain.pay.entity.PaymentDelivery;
 import com.wit.payment.domain.pay.entity.PaymentIssue;
@@ -354,5 +355,16 @@ public class PayService {
           paymentId,
           request.items() != null ? request.items().size() : 0);
     }
+  }
+
+  @Transactional(readOnly = true)
+  public List<PaymentWithItemsResponse> getPaymentsByPhone(String phoneNumber) {
+
+    List<Payment> payments =
+        paymentRepository.findByPhoneNumberOrderByApprovedDateDescApprovedTimeDesc(phoneNumber);
+
+    log.info("[PAY] 전화번호={} 기준 결제 {}건 조회", phoneNumber, payments.size());
+
+    return paymentMapper.toPaymentWithItemsResponseList(payments);
   }
 }

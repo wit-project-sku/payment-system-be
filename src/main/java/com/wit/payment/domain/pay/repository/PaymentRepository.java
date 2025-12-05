@@ -12,4 +12,6 @@ import com.wit.payment.domain.pay.entity.Payment;
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
   List<Payment> findAllByOrderByApprovedDateDescApprovedTimeDesc();
+
+  List<Payment> findByPhoneNumberOrderByApprovedDateDescApprovedTimeDesc(String phoneNumber);
 }

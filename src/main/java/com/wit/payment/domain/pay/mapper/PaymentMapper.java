@@ -12,10 +12,13 @@ import java.util.List;
 import org.springframework.stereotype.Component;
 
 import com.wit.payment.domain.pay.dto.response.PaymentIssueResponse;
+import com.wit.payment.domain.pay.dto.response.PaymentItemSummaryResponse;
 import com.wit.payment.domain.pay.dto.response.PaymentSummaryResponse;
+import com.wit.payment.domain.pay.dto.response.PaymentWithItemsResponse;
 import com.wit.payment.domain.pay.entity.Payment;
 import com.wit.payment.domain.pay.entity.PaymentIssue;
 import com.wit.payment.domain.pay.entity.PaymentIssueStatus;
+import com.wit.payment.domain.pay.entity.PaymentItem;
 import com.wit.payment.global.tl3800.proto.TLPacket;
 
 @Component
@@ -114,5 +117,35 @@ public class PaymentMapper {
 
   private LocalTime parseTime(String dateTime14) {
     return LocalTime.parse(dateTime14.substring(8, 14), TIME_FORMAT);
+  }
+
+  /** PaymentItem -> DTO */
+  public PaymentItemSummaryResponse toPaymentItemSummaryResponse(PaymentItem item) {
+    return PaymentItemSummaryResponse.builder()
+        .productId(item.getProductId())
+        .optionText(item.getOptionText())
+        .build();
+  }
+
+  /** Payment + Items -> Response DTO */
+  public PaymentWithItemsResponse toPaymentWithItemsResponse(Payment payment) {
+
+    List<PaymentItemSummaryResponse> itemResponses =
+        payment.getItems().stream().map(this::toPaymentItemSummaryResponse).toList();
+
+    String deliveryAddress =
+        payment.getDelivery() == null
+            ? null
+            : payment.getDelivery().getAddress() + " " + payment.getDelivery().getDetailAddress();
+
+    return PaymentWithItemsResponse.builder()
+        .paymentId(payment.getId())
+        .deliveryAddress(deliveryAddress)
+        .items(itemResponses)
+        .build();
+  }
+
+  public List<PaymentWithItemsResponse> toPaymentWithItemsResponseList(List<Payment> payments) {
+    return payments.stream().map(this::toPaymentWithItemsResponse).toList();
   }
 }
