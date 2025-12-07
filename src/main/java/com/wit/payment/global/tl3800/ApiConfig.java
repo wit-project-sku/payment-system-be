@@ -1,0 +1,19 @@
+/* 
+ * Copyright (c) WIT Global 
+ */
+package com.wit.payment.global.tl3800;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import com.wit.payment.global.tl3800.client.TL3800Client;
+import com.wit.payment.global.tl3800.payload.Requests;
+
+@Configuration
+public class ApiConfig {
+
+  @Bean
+  TL3800Gateway tl3800Gateway(TL3800Client client, Requests factory) {
+    return new TL3800Gateway(client, factory);
+  }
+}

@@ -35,4 +35,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
       @Param("status") ProductStatus status);
 
   boolean existsByCategoryAndName(Category category, String name);
+
+  List<Product> findByIdIn(Iterable<Long> ids);
 }
