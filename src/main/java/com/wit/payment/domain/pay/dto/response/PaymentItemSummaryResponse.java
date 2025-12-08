@@ -10,4 +10,5 @@ import lombok.Builder;
 @Builder
 public record PaymentItemSummaryResponse(
     @Schema(description = "상품 ID", example = "1") Long productId,
-    @Schema(description = "선택한 옵션(기종 등)", example = "아이폰 16 프로") String optionText) {}
+    @Schema(description = "이미지 url") String imageUrl,
+    @Schema(description = "선택한 옵션(기종 등)", example = "아이폰 16 Pro") String optionText) {}

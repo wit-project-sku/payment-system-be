@@ -8,6 +8,7 @@ import static java.nio.charset.StandardCharsets.US_ASCII;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
 import java.util.List;
 
 import org.springframework.stereotype.Component;
@@ -22,11 +23,21 @@ import com.wit.payment.domain.pay.entity.Payment;
 import com.wit.payment.domain.pay.entity.PaymentIssue;
 import com.wit.payment.domain.pay.entity.PaymentIssueStatus;
 import com.wit.payment.domain.pay.entity.PaymentItem;
+<<<<<<< HEAD
 import com.wit.payment.global.tl3800.parser.TL3800ApprovalInfo;
+=======
+import com.wit.payment.domain.product.entity.ProductImage;
+import com.wit.payment.domain.product.repository.ProductRepository;
+>>>>>>> 21b57ba (:recycle: Refactor: 주문 조회 시 대표 사진 필드 추가)
 import com.wit.payment.global.tl3800.proto.TLPacket;
 
+import lombok.RequiredArgsConstructor;
+
 @Component
+@RequiredArgsConstructor
 public class PaymentMapper {
+
+  private final ProductRepository productRepository;
 
   private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
   private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HHmmss");
@@ -142,8 +153,20 @@ public class PaymentMapper {
 
   /** PaymentItem -> DTO */
   public PaymentItemSummaryResponse toPaymentItemSummaryResponse(PaymentItem item) {
+    String imageUrl =
+        productRepository
+            .findById(item.getProductId())
+            .flatMap(
+                product ->
+                    product.getImages().stream()
+                        .sorted(Comparator.comparingInt(ProductImage::getOrderNum))
+                        .map(ProductImage::getImageUrl)
+                        .findFirst())
+            .orElse(null);
+
     return PaymentItemSummaryResponse.builder()
         .productId(item.getProductId())
+        .imageUrl(imageUrl)
         .optionText(item.getOptionText())
         .build();
   }
