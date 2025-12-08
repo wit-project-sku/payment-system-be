@@ -1,17 +1,19 @@
-/* 
- * Copyright (c) WIT Global 
+/*
+ * Copyright (c) WIT Global
  */
 package com.wit.payment.global.tl3800.parser;
 
 import static java.nio.charset.StandardCharsets.US_ASCII;
 
+import com.wit.payment.global.tl3800.proto.TLPacket;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HexFormat;
+import lombok.extern.slf4j.Slf4j;
 
-import com.wit.payment.global.tl3800.proto.TLPacket;
-
+@Slf4j
 public record TL3800ApprovalInfo(
 
     // 헤더 정보
@@ -44,7 +46,7 @@ public record TL3800ApprovalInfo(
     String issuerInfo, // 발급사/거절메시지
     String acquirerInfo, // 매입사 정보
     String vanExtraRaw // 추가 응답 메시지/부가정보(있으면)
-    ) {
+) {
 
   private static final DateTimeFormatter DATE8 = DateTimeFormatter.BASIC_ISO_DATE; // yyyyMMdd
   private static final DateTimeFormatter TIME6 = DateTimeFormatter.ofPattern("HHmmss");
@@ -57,6 +59,12 @@ public record TL3800ApprovalInfo(
 
   public static TL3800ApprovalInfo fromPacket(TLPacket packet) {
     byte[] d = packet.data;
+
+    // 디버깅용: 데이터영역 덤프
+    String dataHex = HexFormat.of().formatHex(d);
+    String dataAscii = new String(d, US_ASCII);
+    log.info("[TL3800][PAYMENT] dataLen={} DATA_HEX={}", d.length, dataHex);
+    log.info("[TL3800][PAYMENT] DATA_ASCII={}", dataAscii.replace('\0', ' '));
 
     // --- 필드 오프셋 (응답전문[b] 기준) ---
     //  0 : 거래구분코드 (1)
@@ -89,13 +97,65 @@ public record TL3800ApprovalInfo(
     String approvalNoRaw = ascii(d, 50, 12);
     String approvalNo = approvalNoRaw.trim();
 
-    String dateStr = ascii(d, 62, 8);
-    String timeStr = ascii(d, 70, 6);
-    LocalDate approvedDate = LocalDate.parse(dateStr, DATE8);
-    LocalTime approvedTime = LocalTime.parse(timeStr, TIME6);
+    // --- 날짜/시간 파싱을 방어적으로 ---
+    LocalDate approvedDate;
+    LocalTime approvedTime;
+
+    // 1차: 스펙 상 위치(62, 70) 기준으로 시도
+    String dateRaw = ascii(d, 62, 8);
+    String timeRaw = ascii(d, 70, 6);
+    String dtDigits = (dateRaw + timeRaw).replaceAll("[^0-9]", "");
+
+    if (dtDigits.length() >= 14 && dtDigits.startsWith("20")) {
+      String dateStr = dtDigits.substring(0, 8);
+      String timeStr = dtDigits.substring(8, 14);
+      try {
+        approvedDate = LocalDate.parse(dateStr, DATE8);
+        approvedTime = LocalTime.parse(timeStr, TIME6);
+      } catch (Exception e) {
+        log.warn(
+            "[TL3800] primary date/time parse failed raw='{}','{}' digits='{}' → fallback",
+            dateRaw, timeRaw, dtDigits, e);
+        LocalDateTime now = LocalDateTime.now();
+        approvedDate = now.toLocalDate();
+        approvedTime = now.toLocalTime();
+      }
+    } else {
+      // 2차: 데이터 전체에서 "YYYYMMDDHHMMSS" 패턴 검색
+      String all = ascii(d, 0, d.length);
+      java.util.regex.Matcher m =
+          java.util.regex.Pattern.compile("20\\d{12}").matcher(all);
+
+      LocalDate foundDate = null;
+      LocalTime foundTime = null;
+
+      while (m.find()) {
+        String cand = m.group(); // 예: 20251208202639
+        String candDate = cand.substring(0, 8);
+        String candTime = cand.substring(8, 14);
+        try {
+          foundDate = LocalDate.parse(candDate, DATE8);
+          foundTime = LocalTime.parse(candTime, TIME6);
+          break; // 첫 번째 유효한 후보 사용
+        } catch (Exception ignore) {
+        }
+      }
+
+      if (foundDate == null) {
+        // 최후 방어: 장애 내지 말고 현재 시각으로 대체
+        log.warn(
+            "[TL3800] cannot parse date/time from raw='{}','{}', all='{}' → use now()",
+            dateRaw, timeRaw, all);
+        LocalDateTime now = LocalDateTime.now();
+        approvedDate = now.toLocalDate();
+        approvedTime = now.toLocalTime();
+      } else {
+        approvedDate = foundDate;
+        approvedTime = foundTime;
+      }
+    }
 
     String vanTransactionId = ascii(d, 76, 12).trim();
-    // 가맹점번호(88~102)는 현재 사용하지 않음
     String terminalNo = ascii(d, 103, 14).trim();
     String terminalSeqNo = extractTerminalSeqNo(terminalNo);
 
@@ -135,12 +195,16 @@ public record TL3800ApprovalInfo(
   }
 
   private static String ascii(byte[] src, int offset, int length) {
-    return new String(src, offset, length, US_ASCII);
+    if (src == null || length <= 0 || offset >= src.length) {
+      return "";
+    }
+    int copyLen = Math.min(length, src.length - offset);
+    return new String(src, offset, copyLen, US_ASCII);
   }
 
   private static int parseAmount(byte[] src, int offset, int length) {
     // 방어적 범위 체크
-    if (src == null || src.length < offset + length) {
+    if (src == null || src.length < offset + 1) {
       return 0;
     }
 
@@ -155,13 +219,13 @@ public record TL3800ApprovalInfo(
 
     try {
       long value = Long.parseLong(digits);
-
       if (value > Integer.MAX_VALUE) {
+        log.warn("[TL3800] amount overflow value={} raw='{}'", value, raw);
         return 0;
       }
-
       return (int) value;
     } catch (NumberFormatException e) {
+      log.warn("[TL3800] amount parse failed raw='{}' digits='{}'", raw, digits, e);
       return 0;
     }
   }
