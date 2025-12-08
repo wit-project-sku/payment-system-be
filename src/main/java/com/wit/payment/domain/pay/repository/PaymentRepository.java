@@ -12,9 +12,13 @@ import com.wit.payment.domain.pay.entity.Payment;
 
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
-  List<Payment> findAllByOrderByApprovedDateDescApprovedTimeDesc();
+  // 승인(매출)일시 기준 전체 조회
+  List<Payment> findAllByOrderByOrgApprovedDateDescOrgApprovedTimeDesc();
 
-  List<Payment> findByPhoneNumberOrderByApprovedDateDescApprovedTimeDesc(String phoneNumber);
+  // 전화번호 + 승인(매출)일시 기준 조회
+  List<Payment> findByPhoneNumberOrderByOrgApprovedDateDescOrgApprovedTimeDesc(String phoneNumber);
 
-  Optional<Payment> findTopByPhoneNumberOrderByApprovedDateDescApprovedTimeDesc(String phoneNumber);
+  // 전화번호 기준 가장 최근 승인 건
+  Optional<Payment> findTopByPhoneNumberOrderByOrgApprovedDateDescOrgApprovedTimeDesc(
+      String phoneNumber);
 }

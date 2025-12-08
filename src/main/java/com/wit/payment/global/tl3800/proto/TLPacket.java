@@ -89,16 +89,6 @@ public final class TLPacket {
     }
   }
 
-  /** 인스턴스 직렬화(호출자: req.toBytes()). 내부적으로 정규 build를 사용합니다. */
-  public byte[] toBytes() {
-    return build(
-        this.catOrMid,
-        this.dateTime14,
-        this.jobCode.code, // JobCode의 코드 값
-        this.responseCode & 0xFF, // 부호 확장 방지
-        this.data);
-  }
-
   /** 프레임 직렬화(STX~ETX+BCC 포함). ID는 좌정렬로 복사되고 남는 자리는 0x00으로 자연 패딩됩니다. */
   public static byte[] build(String id, String dateTime14, int job, int resp, byte[] dataLE) {
     if (dateTime14 == null || dateTime14.length() != 14) {
@@ -208,50 +198,6 @@ public final class TLPacket {
     byte[] data = Arrays.copyOfRange(frame, HEADER_BYTES, HEADER_BYTES + dataLen);
 
     // 5) 문자열 필드 정리(우측 0x00 패딩 제거)
-    String catStr = Proto.printableOrHex(idBytes);
-    String dtStr = new String(dtBytes, StandardCharsets.US_ASCII);
-
-    return new TLPacket(catStr, dtStr, job, resp, data);
-  }
-
-  /**
-   * lenient 파서: 헤더/길이는 신뢰하되, ETX/BCC는 "있으면 좋고, 안 맞으면 무시"한다. 프레임 경계가 다소 이상하거나, 벤더 구현이 BCC 규칙을 안 지키는
-   * 경우 디버깅/우회용으로 사용.
-   */
-  public static TLPacket parseLenient(byte[] frame) {
-    if (frame == null || frame.length < HEADER_BYTES + 2) {
-      throw new IllegalArgumentException("short frame: len=" + (frame == null ? -1 : frame.length));
-    }
-    if ((frame[POS_STX] & 0xFF) != (STX & 0xFF)) {
-      throw new IllegalArgumentException(String.format("STX mismatch: %02X", frame[POS_STX]));
-    }
-
-    // 1) 헤더 필드 파싱 (strict와 동일)
-    int p = POS_ID;
-    byte[] idBytes = Arrays.copyOfRange(frame, p, p + CATMID_LEN);
-    p += CATMID_LEN;
-    byte[] dtBytes = Arrays.copyOfRange(frame, p, p + DATETIME_LEN);
-    p += DATETIME_LEN;
-    JobCode job = JobCode.of(frame[p++]);
-    byte resp = frame[p++];
-
-    // DataLength (LE)
-    int dataLen = (frame[p++] & 0xFF) | ((frame[p++] & 0xFF) << 8);
-
-    // 2) 실제 버퍼 길이를 고려하여 "실질적으로 읽을 수 있는 data 길이" 산정
-    //    (마지막 2바이트는 ETX/BCC라고 가정하고 남겨두되, 값 일치 여부는 강제하지 않는다)
-    int maxDataArea = Math.max(0, frame.length - HEADER_BYTES - 2);
-    int actualDataLen = Math.min(Math.max(dataLen, 0), maxDataArea);
-
-    if (actualDataLen < 0) {
-      throw new IllegalArgumentException(
-          "frame too short for header (dataLen=" + dataLen + ", buf.len=" + frame.length + ")");
-    }
-
-    // 3) 본문 추출 (헤더 기준 dataLen과 실제 버퍼 길이 중 작은 쪽만 사용)
-    byte[] data = Arrays.copyOfRange(frame, HEADER_BYTES, HEADER_BYTES + actualDataLen);
-
-    // 4) 문자열 필드 정리
     String catStr = Proto.printableOrHex(idBytes);
     String dtStr = new String(dtBytes, StandardCharsets.US_ASCII);
 

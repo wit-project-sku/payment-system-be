@@ -18,9 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.wit.payment.domain.pay.dto.request.PayRequest;
 import com.wit.payment.domain.pay.dto.request.PaymentOptionAndDeliveryRequest;
-import com.wit.payment.domain.pay.dto.response.PayResponse;
 import com.wit.payment.domain.pay.dto.response.PaymentIssueResponse;
 import com.wit.payment.domain.pay.dto.response.PaymentSummaryResponse;
 import com.wit.payment.domain.pay.dto.response.PaymentWithItemsResponse;
@@ -38,22 +36,6 @@ import lombok.RequiredArgsConstructor;
 public class PayController {
 
   private final PayService payService;
-
-  @Operation(
-      summary = "장바구니 결제 요청 API",
-      description = "상품 ID/수량/총 금액/할부 여부를 기반으로 단말 승인 요청 후 결제 생성 또는 이슈 기록을 수행합니다.")
-  @PostMapping("/pay")
-  public ResponseEntity<BaseResponse<PayResponse>> pay(@Valid @RequestBody PayRequest request) {
-
-    PayResponse response = payService.pay(request);
-
-    // 성공/실패 여부에 따라 HTTP Status 분기
-    HttpStatus status = response.success() ? HttpStatus.CREATED : HttpStatus.OK;
-
-    return ResponseEntity.status(status)
-        .body(
-            BaseResponse.success(response.success() ? "결제가 완료되었습니다." : "결제 오류가 발생했습니다.", response));
-  }
 
   @GetMapping("/admin/payments")
   @Operation(summary = "결제 내역 전체 조회 API", description = "승인된 결제 내역을 최신순으로 전체 조회합니다.")
