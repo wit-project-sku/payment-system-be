@@ -1,10 +1,11 @@
-/* 
- * Copyright (c) WIT Global 
+/*
+ * Copyright (c) WIT Global
  */
 package com.wit.payment.global.config;
 
+import com.wit.payment.global.security.JwtAuthenticationFilter;
 import jakarta.servlet.http.HttpServletResponse;
-
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -15,10 +16,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-
-import com.wit.payment.global.security.JwtAuthenticationFilter;
-
-import lombok.RequiredArgsConstructor;
 
 @Configuration
 @EnableWebSecurity
@@ -89,6 +86,14 @@ public class SecurityConfig {
                         "/api/categories/first",
                         "/api/tl3800/*",
                         "/api/pay")
+                    .permitAll()
+
+                    // 로컬 결제 서버 → 중앙 서버용 내부 콜 (성공/실패/취소 보고)
+                    .requestMatchers(
+                        "/api/pay/success",
+                        "/api/pay/failure",
+                        "/api/pay/{paymentId}/info",
+                        "/api/pay/cancel/report")
                     .permitAll()
 
                     // 웹용 API

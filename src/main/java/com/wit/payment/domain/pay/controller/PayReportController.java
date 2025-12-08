@@ -22,7 +22,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
-@Tag(name = "PayReport", description = "로컬 결제 보고 수신 API")
+@Tag(name = "PayReport", description = "로컬 결제 보고 수신 관련 API")
 @RestController
 @RequestMapping(value = "/api/pay", produces = MediaType.APPLICATION_JSON_VALUE)
 @RequiredArgsConstructor
