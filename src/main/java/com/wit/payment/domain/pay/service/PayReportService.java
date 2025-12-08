@@ -26,6 +26,7 @@ public class PayReportService {
 
   private final PaymentRepository paymentRepository;
   private final PaymentIssueRepository paymentIssueRepository;
+  private final SmsService smsService;
   private final PaymentMapper paymentMapper;
 
   @Transactional
@@ -47,6 +48,7 @@ public class PayReportService {
     Payment saved = paymentRepository.save(payment);
 
     // 4. sms 전송
+    smsService.sendTestMessage(request.payRequest().phoneNumber());
 
     log.info(
         "[REPORT] 결제 저장 완료 - paymentId={}, approvalNo={}, vanTxNo={}",
