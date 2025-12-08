@@ -1,11 +1,10 @@
-/*
- * Copyright (c) WIT Global
+/* 
+ * Copyright (c) WIT Global 
  */
 package com.wit.payment.global.tl3800.parser;
 
 import static java.nio.charset.StandardCharsets.US_ASCII;
 
-import com.wit.payment.global.tl3800.proto.TLPacket;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -13,39 +12,41 @@ import java.util.HexFormat;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.wit.payment.global.tl3800.proto.TLPacket;
+
 public record TL3800ApprovalInfo(
 
     // 헤더 정보
-    String terminalId,          // 헤더 CAT/MID (TID)
+    String terminalId, // 헤더 CAT/MID (TID)
     int responseCode,
 
     // 거래 속성
-    String tranTypeCode,        // 거래구분코드
-    String mediaType,           // 거래매체
+    String tranTypeCode, // 거래구분코드
+    String mediaType, // 거래매체
 
     // 금액/할부
-    int approvedAmount,         // 승인금액(원거래금액+세금+봉사료)
-    int vatAmount,              // 세금
-    int svcAmount,              // 봉사료
-    String installment,         // 할부개월
+    int approvedAmount, // 승인금액(원거래금액+세금+봉사료)
+    int vatAmount, // 세금
+    int svcAmount, // 봉사료
+    String installment, // 할부개월
 
     // 승인/매출 정보
-    String approvalNoRaw,       // 12자리, space 포함 원본
-    String approvalNo,          // trim된 승인번호
-    LocalDate approvedDate,     // 매출일자 YYYY-MM-DD
-    LocalTime approvedTime,     // 매출시간 hh:mm:ss
+    String approvalNoRaw, // 12자리, space 포함 원본
+    String approvalNo, // trim된 승인번호
+    LocalDate approvedDate, // 매출일자 YYYY-MM-DD
+    LocalTime approvedTime, // 매출시간 hh:mm:ss
 
     // 원거래 식별용
-    String vanTransactionId,    // 거래고유번호(거래날짜6+일련번호6)
-    String terminalNo,          // 단말기번호(TID+일련번호, 14자리)
-    String terminalSeqNo,       // 단말 거래일련번호(terminalNo 마지막 4자리 등)
+    String vanTransactionId, // 거래고유번호(거래날짜6+일련번호6)
+    String terminalNo, // 단말기번호(TID+일련번호, 14자리)
+    String terminalSeqNo, // 단말 거래일련번호(terminalNo 마지막 4자리 등)
 
     // 카드/매입사/부가정보
-    String cardNoMasked,        // 마스킹된 카드번호
-    String issuerInfo,          // 발급사/거절메시지
-    String acquirerInfo,        // 매입사 정보
-    String vanExtraRaw          // 추가 응답 메시지/부가정보(있으면)
-) {
+    String cardNoMasked, // 마스킹된 카드번호
+    String issuerInfo, // 발급사/거절메시지
+    String acquirerInfo, // 매입사 정보
+    String vanExtraRaw // 추가 응답 메시지/부가정보(있으면)
+    ) {
 
   private static final DateTimeFormatter DATE8 = DateTimeFormatter.BASIC_ISO_DATE; // yyyyMMdd
   private static final DateTimeFormatter TIME6 = DateTimeFormatter.ofPattern("HHmmss");
@@ -122,7 +123,7 @@ public record TL3800ApprovalInfo(
         LocalTime foundTime = null;
 
         while (m.find()) {
-          String cand = m.group();      // 예: 20251208202639
+          String cand = m.group(); // 예: 20251208202639
           String candDate = cand.substring(0, 8);
           String candTime = cand.substring(8, 14);
           try {
@@ -189,17 +190,14 @@ public record TL3800ApprovalInfo(
         cardNoMasked,
         issuerInfo,
         acquirerInfo,
-        vanExtraRaw
-    );
+        vanExtraRaw);
   }
 
   private static String ascii(byte[] src, int offset, int length) {
     return new String(src, offset, length, US_ASCII);
   }
 
-  /**
-   * 범위 체크 포함한 방어적 ASCII 추출
-   */
+  /** 범위 체크 포함한 방어적 ASCII 추출 */
   private static String safeAscii(byte[] src, int offset, int length) {
     if (src == null || offset >= src.length) {
       return "";
