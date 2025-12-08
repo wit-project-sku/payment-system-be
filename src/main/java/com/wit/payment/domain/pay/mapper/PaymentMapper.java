@@ -23,12 +23,9 @@ import com.wit.payment.domain.pay.entity.Payment;
 import com.wit.payment.domain.pay.entity.PaymentIssue;
 import com.wit.payment.domain.pay.entity.PaymentIssueStatus;
 import com.wit.payment.domain.pay.entity.PaymentItem;
-<<<<<<< HEAD
-import com.wit.payment.global.tl3800.parser.TL3800ApprovalInfo;
-=======
 import com.wit.payment.domain.product.entity.ProductImage;
 import com.wit.payment.domain.product.repository.ProductRepository;
->>>>>>> 21b57ba (:recycle: Refactor: 주문 조회 시 대표 사진 필드 추가)
+import com.wit.payment.global.tl3800.parser.TL3800ApprovalInfo;
 import com.wit.payment.global.tl3800.proto.TLPacket;
 
 import lombok.RequiredArgsConstructor;
