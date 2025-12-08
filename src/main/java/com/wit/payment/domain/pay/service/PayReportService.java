@@ -46,6 +46,8 @@ public class PayReportService {
     // 3. 저장
     Payment saved = paymentRepository.save(payment);
 
+    // 4. sms 전송
+
     log.info(
         "[REPORT] 결제 저장 완료 - paymentId={}, approvalNo={}, vanTxNo={}",
         saved.getId(),
