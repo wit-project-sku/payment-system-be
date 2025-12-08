@@ -145,7 +145,8 @@ public class PayService {
 
   /** [조회] 결제 내역 전체 */
   public List<PaymentSummaryResponse> getAllPayments() {
-    List<Payment> payments = paymentRepository.findAllByOrderByApprovedDateDescApprovedTimeDesc();
+    List<Payment> payments =
+        paymentRepository.findAllByOrderByOrgApprovedDateDescOrgApprovedTimeDesc();
 
     log.info("[PAY] 결제 내역 전체 조회 - count={}", payments.size());
 
@@ -255,7 +256,7 @@ public class PayService {
                           .address(request.address())
                           .detailAddress(request.detailAddress())
                           .build();
-                  payment.setDelivery(newDelivery);
+                  payment.setDeliveryDetail(newDelivery);
                   return newDelivery;
                 });
 
@@ -291,7 +292,8 @@ public class PayService {
     // 1. 전화번호 기준 가장 최근 결제 조회
     Payment payment =
         paymentRepository
-            .findTopByPhoneNumberOrderByApprovedDateDescApprovedTimeDesc(request.phoneNumber())
+            .findTopByPhoneNumberOrderByOrgApprovedDateDescOrgApprovedTimeDesc(
+                request.phoneNumber())
             .orElseThrow(() -> new CustomException(PaymentErrorCode.PAYMENT_NOT_FOUND));
 
     Long paymentId = payment.getId();
@@ -342,7 +344,7 @@ public class PayService {
                             .address(deliveryReq.address())
                             .detailAddress(deliveryReq.detailAddress())
                             .build();
-                    payment.setDelivery(newDelivery);
+                    payment.setDeliveryDetail(newDelivery);
                     return newDelivery;
                   });
 
@@ -365,7 +367,8 @@ public class PayService {
   public List<PaymentWithItemsResponse> getPaymentsByPhone(String phoneNumber) {
 
     List<Payment> payments =
-        paymentRepository.findByPhoneNumberOrderByApprovedDateDescApprovedTimeDesc(phoneNumber);
+        paymentRepository.findByPhoneNumberOrderByOrgApprovedDateDescOrgApprovedTimeDesc(
+            phoneNumber);
 
     log.info("[PAY] 전화번호={} 기준 결제 {}건 조회", phoneNumber, payments.size());
 

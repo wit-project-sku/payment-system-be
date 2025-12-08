@@ -21,8 +21,6 @@ public enum PaymentErrorCode implements BaseErrorCode {
   AMOUNT_MISMATCH("PAY_4002", "요청 금액과 서버 계산 금액이 일치하지 않습니다.", HttpStatus.BAD_REQUEST),
   EMPTY_ITEMS("PAY_4003", "빈 상품으로 결제를 요청했습니다.", HttpStatus.BAD_REQUEST),
 
-  TERMINAL_REJECTED("PAY_4100", "단말에서 결제가 거절되었습니다.", HttpStatus.BAD_REQUEST),
-  TERMINAL_TIMEOUT("PAY_5041", "단말 응답이 지연되었습니다.", HttpStatus.GATEWAY_TIMEOUT),
   TERMINAL_ERROR("PAY_5001", "단말 통신 중 오류가 발생했습니다.", HttpStatus.BAD_GATEWAY);
 
   private final String code;
