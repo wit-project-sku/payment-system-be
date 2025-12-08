@@ -139,11 +139,31 @@ public record TL3800ApprovalInfo(
   }
 
   private static int parseAmount(byte[] src, int offset, int length) {
-    String s = ascii(src, offset, length).trim();
-    if (s.isEmpty()) {
+    // 방어적 범위 체크
+    if (src == null || src.length < offset + length) {
       return 0;
     }
-    return Integer.parseInt(s);
+
+    String raw = ascii(src, offset, length);
+
+    // 숫자만 추출 (카드사가 특수문자/공백 섞어 보내도 방어)
+    String digits = raw.replaceAll("[^0-9]", "");
+
+    if (digits.isEmpty()) {
+      return 0;
+    }
+
+    try {
+      long value = Long.parseLong(digits);
+
+      if (value > Integer.MAX_VALUE) {
+        return 0;
+      }
+
+      return (int) value;
+    } catch (NumberFormatException e) {
+      return 0;
+    }
   }
 
   private static String extractTerminalSeqNo(String terminalNo) {
