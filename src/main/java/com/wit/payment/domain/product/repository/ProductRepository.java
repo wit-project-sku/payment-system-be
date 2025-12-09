@@ -1,15 +1,17 @@
-/*
- * Copyright (c) WIT Global
+/* 
+ * Copyright (c) WIT Global 
  */
 package com.wit.payment.domain.product.repository;
+
+import java.util.List;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import com.wit.payment.domain.category.entity.Category;
 import com.wit.payment.domain.product.entity.Product;
 import com.wit.payment.domain.product.entity.ProductStatus;
-import java.util.List;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
@@ -36,10 +38,11 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
   List<Product> findByIdIn(Iterable<Long> ids);
 
-  @Query("""
-          SELECT pi.imageUrl 
-          FROM ProductImage pi 
-          WHERE pi.product.id = :productId 
+  @Query(
+      """
+          SELECT pi.imageUrl
+          FROM ProductImage pi
+          WHERE pi.product.id = :productId
           ORDER BY pi.orderNum ASC
           LIMIT 1
       """)

@@ -1,9 +1,16 @@
-/*
- * Copyright (c) WIT Global
+/* 
+ * Copyright (c) WIT Global 
  */
 package com.wit.payment.domain.pay.mapper;
 
 import static java.nio.charset.StandardCharsets.US_ASCII;
+
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+
+import org.springframework.stereotype.Component;
 
 import com.wit.payment.domain.pay.dto.request.PayRequest;
 import com.wit.payment.domain.pay.dto.request.PaySuccessReportRequest;
@@ -19,12 +26,8 @@ import com.wit.payment.domain.product.entity.Product;
 import com.wit.payment.domain.product.repository.ProductRepository;
 import com.wit.payment.global.tl3800.parser.TL3800ApprovalInfo;
 import com.wit.payment.global.tl3800.proto.TLPacket;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
-import java.util.List;
+
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
@@ -90,9 +93,7 @@ public class PaymentMapper {
         .build();
   }
 
-  /**
-   * 장애/예외 상황 → PaymentIssue 엔티티 변환 (전화번호 포함)
-   */
+  /** 장애/예외 상황 → PaymentIssue 엔티티 변환 (전화번호 포함) */
   public PaymentIssue toIssue(long amount, String message, String phoneNumber) {
     return PaymentIssue.builder()
         .occurredDate(LocalDate.now())
@@ -146,16 +147,16 @@ public class PaymentMapper {
     return issues.stream().map(this::toIssueResponse).toList();
   }
 
-  /**
-   * PaymentItem -> DTO
-   */
+  /** PaymentItem -> DTO */
   public PaymentItemSummaryResponse toPaymentItemSummaryResponse(PaymentItem item) {
 
     // 1. 상품 조회
-    Product product = productRepository.findById(item.getProductId())
-        .orElseThrow(() -> new IllegalStateException(
-            "Product not found for id: " + item.getProductId())
-        );
+    Product product =
+        productRepository
+            .findById(item.getProductId())
+            .orElseThrow(
+                () ->
+                    new IllegalStateException("Product not found for id: " + item.getProductId()));
 
     // 2. 대표 이미지 조회 (쿼리 최적화된 방식)
     String imageUrl = productRepository.findTopImageUrl(item.getProductId());
@@ -169,9 +170,7 @@ public class PaymentMapper {
         .build();
   }
 
-  /**
-   * Payment + Items -> Response DTO
-   */
+  /** Payment + Items -> Response DTO */
   public PaymentWithItemsResponse toPaymentWithItemsResponse(Payment payment) {
 
     List<PaymentItemSummaryResponse> itemResponses =
