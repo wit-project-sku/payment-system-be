@@ -51,24 +51,7 @@ services:
     networks:
       - payment-network
     restart: unless-stopped
-
-  nginx:
-    image: nginx:latest
-    container_name: nginx
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - /home/ubuntu/nginx/conf.d:/etc/nginx/conf.d
-      - /etc/letsencrypt:/etc/letsencrypt:ro
-      - /home/ubuntu/nginx/.htpasswd:/etc/nginx/.htpasswd:ro
-    depends_on:
-      - app
-      - dozzle
-    networks:
-      - payment-network
-    restart: unless-stopped
-
+    
   dozzle:
     image: amir20/dozzle:latest
     container_name: dozzle
